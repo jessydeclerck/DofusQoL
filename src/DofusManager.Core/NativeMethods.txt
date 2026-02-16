@@ -1,0 +1,15 @@
+EnumWindows
+GetWindowText
+GetWindowTextLength
+GetWindowThreadProcessId
+IsWindowVisible
+IsIconic
+MonitorFromWindow
+GetMonitorInfo
+GetClassName
+MONITORINFOEXW
+RegisterHotKey
+UnregisterHotKey
+SetForegroundWindow
+ShowWindow
+IsWindow
