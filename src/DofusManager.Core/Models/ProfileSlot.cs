@@ -10,4 +10,6 @@ public class ProfileSlot
     public string WindowTitlePattern { get; set; } = "*";
     public bool IsLeader { get; set; }
     public string? FocusHotkey { get; set; }
+    public uint FocusHotkeyModifiers { get; set; }
+    public uint FocusHotkeyVirtualKeyCode { get; set; }
 }

@@ -45,11 +45,8 @@ public partial class App : Application
         services.AddSingleton<IPushToBroadcastService, PushToBroadcastService>();
         services.AddSingleton<IGroupInviteService, GroupInviteService>();
 
-        // ViewModels (Singleton pour éviter les doubles abonnements aux événements)
-        services.AddSingleton<HotkeyViewModel>();
-        services.AddSingleton<ProfileViewModel>();
-        services.AddSingleton<BroadcastViewModel>();
-        services.AddSingleton<MainViewModel>();
+        // ViewModel unifié
+        services.AddSingleton<DashboardViewModel>();
 
         // Views
         services.AddTransient<Views.MainWindow>();
