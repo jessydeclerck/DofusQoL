@@ -136,6 +136,13 @@ public class PushToBroadcastService : IPushToBroadcastService
         // Attendre que le clic original soit traité par la fenêtre source
         Thread.Sleep(InitialDelayMs);
 
+        // Fermer le clic de l'utilisateur sur la source (LBUTTONUP synthétique).
+        // Sans ça, déplacer le curseur pendant que le bouton est "enfoncé" côté source
+        // crée un drag/glissade fantôme → changement de carte involontaire.
+        // Le WM_LBUTTONUP physique de l'utilisateur ira à la cible qui a le focus
+        // au moment du relâchement, pas à la source.
+        _windowHelper.SendMouseUp();
+
         // Convertir les coordonnées écran en coordonnées client de la source
         var clientCoords = _windowHelper.ScreenToClient(sourceWindow.Handle, screenX, screenY);
         if (clientCoords is null)
@@ -217,11 +224,25 @@ public class PushToBroadcastService : IPushToBroadcastService
             Logger.Information("[BROADCAST-RESTORE] Cursor restauré à ({X},{Y})", originalCursorPos.Value.X, originalCursorPos.Value.Y);
         }
 
-        // Restaurer la fenêtre source au premier plan
-        var restoreFocused = _windowHelper.FocusWindow(sourceWindow.Handle);
-        Logger.Information("[BROADCAST-RESTORE] FocusWindow source → {Result}", restoreFocused);
+        // Restaurer la fenêtre source au premier plan (retry si nécessaire)
+        const int maxRetries = 3;
+        var finalForeground = (nint)0;
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            _windowHelper.FocusWindow(sourceWindow.Handle);
+            Thread.Sleep(FocusDelayMs);
 
-        var finalForeground = _windowHelper.GetForegroundWindow();
+            finalForeground = _windowHelper.GetForegroundWindow();
+            if (finalForeground == sourceWindow.Handle)
+            {
+                Logger.Information("[BROADCAST-RESTORE] FocusWindow source → OK (tentative {Attempt})", attempt);
+                break;
+            }
+
+            Logger.Warning("[BROADCAST-RESTORE] FocusWindow source raté (tentative {Attempt}/{Max}, foreground={Foreground})",
+                attempt, maxRetries, finalForeground);
+        }
+
         Logger.Information("[BROADCAST-END] Foreground final : {Foreground} (source={Source}, match={Match}) — {Reached}/{Total} fenêtres",
             finalForeground, sourceWindow.Handle, finalForeground == sourceWindow.Handle, reached, windowIndex);
 

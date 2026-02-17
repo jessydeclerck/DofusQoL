@@ -97,15 +97,16 @@ public class WindowHelper : IWin32WindowHelper
                 PInvoke.ShowWindow(hWnd, SHOW_WINDOW_CMD.SW_RESTORE);
             }
 
-            // No-op mouse move (0,0) via SendInput pour satisfaire la condition
+            // Injecter un INPUT_KEYBOARD no-op pour satisfaire la condition
             // "le process appelant a reçu le dernier input event" requise par
-            // SetForegroundWindow. Contrairement au ALT-key trick, ceci n'envoie
-            // aucune touche au jeu et n'interfère pas avec GetAsyncKeyState.
+            // SetForegroundWindow. On envoie un key-up pour wVk=0 (aucune touche) :
+            // Windows le comptabilise comme input mais aucun WM_KEYDOWN/WM_KEYUP
+            // exploitable n'est généré, et zéro interaction avec l'état souris
+            // (pas de WM_MOUSEMOVE parasite).
             var noop = new Windows.Win32.UI.Input.KeyboardAndMouse.INPUT[1];
-            noop[0].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_MOUSE;
-            noop[0].Anonymous.mi.dwFlags = Windows.Win32.UI.Input.KeyboardAndMouse.MOUSE_EVENT_FLAGS.MOUSEEVENTF_MOVE;
-            noop[0].Anonymous.mi.dx = 0;
-            noop[0].Anonymous.mi.dy = 0;
+            noop[0].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_KEYBOARD;
+            noop[0].Anonymous.ki.dwFlags = Windows.Win32.UI.Input.KeyboardAndMouse.KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+            // wVk = 0, wScan = 0 → key-up for "no key"
 
             PInvoke.SendInput(noop.AsSpan(), sizeof(Windows.Win32.UI.Input.KeyboardAndMouse.INPUT));
 
@@ -268,5 +269,15 @@ public class WindowHelper : IWin32WindowHelper
 
         var sent = PInvoke.SendInput(inputs.AsSpan(), sizeof(Windows.Win32.UI.Input.KeyboardAndMouse.INPUT));
         return sent == 2;
+    }
+
+    public unsafe bool SendMouseUp()
+    {
+        var inputs = new Windows.Win32.UI.Input.KeyboardAndMouse.INPUT[1];
+        inputs[0].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_MOUSE;
+        inputs[0].Anonymous.mi.dwFlags = Windows.Win32.UI.Input.KeyboardAndMouse.MOUSE_EVENT_FLAGS.MOUSEEVENTF_LEFTUP;
+
+        var sent = PInvoke.SendInput(inputs.AsSpan(), sizeof(Windows.Win32.UI.Input.KeyboardAndMouse.INPUT));
+        return sent == 1;
     }
 }
