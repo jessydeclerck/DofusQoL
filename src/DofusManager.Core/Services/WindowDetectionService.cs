@@ -132,6 +132,8 @@ public class WindowDetectionService : IWindowDetectionService
         List<DofusWindow> added;
         List<DofusWindow> removed;
 
+        bool titlesChanged;
+
         lock (_lock)
         {
             added = newWindows.Where(w => !_detectedWindows.Contains(w)).ToList();
@@ -139,22 +141,29 @@ public class WindowDetectionService : IWindowDetectionService
 
             if (added.Count == 0 && removed.Count == 0)
             {
-                // Mettre à jour les propriétés mutables (titre, état minimisé)
+                // Mettre à jour les propriétés mutables et détecter les changements de titre
+                titlesChanged = false;
                 foreach (var existing in _detectedWindows)
                 {
                     var updated = newWindows.FirstOrDefault(w => w.Handle == existing.Handle);
                     if (updated is not null)
                     {
+                        if (existing.Title != updated.Title)
+                            titlesChanged = true;
                         existing.Title = updated.Title;
                         existing.IsVisible = updated.IsVisible;
                         existing.IsMinimized = updated.IsMinimized;
                         existing.ScreenName = updated.ScreenName;
                     }
                 }
-                return;
-            }
 
-            _detectedWindows = newWindows;
+                if (!titlesChanged)
+                    return;
+            }
+            else
+            {
+                _detectedWindows = newWindows;
+            }
         }
 
         if (added.Count > 0)
@@ -166,7 +175,7 @@ public class WindowDetectionService : IWindowDetectionService
         {
             Added = added,
             Removed = removed,
-            Current = newWindows.AsReadOnly()
+            Current = DetectedWindows
         });
     }
 }

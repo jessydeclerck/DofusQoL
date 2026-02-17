@@ -149,8 +149,7 @@ public class GroupInviteService : IGroupInviteService
 
             Logger.Information("[AUTOFOLLOW] Ctrl+W envoyé à {Handle}", window.Handle);
 
-            if (toggled < windows.Count - 1)
-                await Task.Delay(DelayBetweenFollows);
+            await Task.Delay(DelayBetweenFollows);
         }
 
         // Restaurer le focus sur le leader
