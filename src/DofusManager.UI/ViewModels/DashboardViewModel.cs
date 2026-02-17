@@ -734,49 +734,70 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     {
         _dispatcher.Invoke(() =>
         {
-            // Si un profil est en attente d'application (fenêtres pas encore détectées au démarrage)
-            if (_pendingProfileName is not null && e.Current.Count > 0)
-            {
-                var pendingName = _pendingProfileName;
-                _pendingProfileName = null;
-
-                var profile = _profileService.GetProfile(pendingName);
-                if (profile is not null)
-                {
-                    ApplyProfile(profile);
-                    _activeProfileName = profile.ProfileName;
-                    StatusText = $"Profil '{profile.ProfileName}' restauré";
-                    Logger.Information("Profil appliqué après détection des fenêtres : {ProfileName}", profile.ProfileName);
-                    return;
-                }
-            }
-
-            // Si de nouvelles fenêtres apparaissent, réappliquer la config connue
             if (HasNewWindows(e.Current))
             {
-                // Profil actif → réappliquer le profil
-                if (_activeProfileName is not null)
-                {
-                    var profile = _profileService.GetProfile(_activeProfileName);
-                    if (profile is not null)
-                    {
-                        ApplyProfile(profile);
-                        Logger.Information("Profil réappliqué après changement de fenêtres : {ProfileName}", _activeProfileName);
-                        return;
-                    }
-                }
-
-                // Pas de profil mais un snapshot de session → restaurer l'ordre/leader/hotkeys
-                if (_activeProfileName is null && _sessionSnapshot is not null)
-                {
-                    ApplyProfile(_sessionSnapshot);
-                    Logger.Information("Snapshot de session réappliqué après changement de fenêtres");
+                // Tenter de réappliquer un profil ou snapshot si des patterns matchent
+                var profileToApply = ResolveProfileToApply();
+                if (profileToApply is not null && TryApplyProfile(profileToApply, e.Current))
                     return;
-                }
             }
 
             SyncCharacters(e.Current);
         });
+    }
+
+    /// <summary>
+    /// Détermine quel profil/snapshot réappliquer (profil actif, pending, ou snapshot de session).
+    /// </summary>
+    private Profile? ResolveProfileToApply()
+    {
+        // Profil en attente (démarrage)
+        if (_pendingProfileName is not null)
+        {
+            var profile = _profileService.GetProfile(_pendingProfileName);
+            if (profile is not null) return profile;
+        }
+
+        // Profil actif
+        if (_activeProfileName is not null)
+            return _profileService.GetProfile(_activeProfileName);
+
+        // Snapshot de session (modifications sans profil)
+        return _sessionSnapshot;
+    }
+
+    /// <summary>
+    /// Tente d'appliquer un profil. Ne le fait que si au moins une fenêtre matche.
+    /// Retourne true si le profil a été appliqué, false sinon (fallback vers SyncCharacters).
+    /// </summary>
+    private bool TryApplyProfile(Profile profile, IReadOnlyList<DofusWindow> currentWindows)
+    {
+        // Vérifier qu'au moins une fenêtre matche un slot du profil
+        var anyMatch = profile.Slots.Any(slot =>
+            currentWindows.Any(w => GlobMatcher.IsMatch(slot.WindowTitlePattern, w.Title)));
+
+        if (!anyMatch) return false;
+
+        ApplyProfile(profile);
+
+        // Consommer le pending et tracker le profil actif
+        if (_pendingProfileName is not null)
+        {
+            _activeProfileName = _pendingProfileName;
+            _pendingProfileName = null;
+            StatusText = $"Profil '{_activeProfileName}' restauré";
+            Logger.Information("Profil restauré au démarrage : {ProfileName}", _activeProfileName);
+        }
+        else if (_activeProfileName is not null)
+        {
+            Logger.Information("Profil réappliqué après changement de fenêtres : {ProfileName}", _activeProfileName);
+        }
+        else
+        {
+            Logger.Information("Snapshot de session réappliqué après changement de fenêtres");
+        }
+
+        return true;
     }
 
     private bool HasNewWindows(IReadOnlyList<DofusWindow> current)
