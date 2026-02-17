@@ -19,10 +19,15 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private readonly IHotkeyService _hotkeyService;
     private readonly IFocusService _focusService;
     private readonly IProfileService _profileService;
+    private readonly IAppStateService _appStateService;
     private readonly IPushToBroadcastService _pushToBroadcastService;
     private readonly IGroupInviteService _groupInviteService;
     private readonly IWin32WindowHelper _windowHelper;
     private readonly Dispatcher _dispatcher;
+
+    // Suivi du profil actif pour la persistance de session
+    private string? _activeProfileName;
+    private string? _pendingProfileName;
 
     // Virtual Key constants
     private const uint VK_TAB = 0x09;
@@ -115,6 +120,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         IHotkeyService hotkeyService,
         IFocusService focusService,
         IProfileService profileService,
+        IAppStateService appStateService,
         IPushToBroadcastService pushToBroadcastService,
         IGroupInviteService groupInviteService,
         IWin32WindowHelper windowHelper)
@@ -123,6 +129,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         _hotkeyService = hotkeyService;
         _focusService = focusService;
         _profileService = profileService;
+        _appStateService = appStateService;
         _pushToBroadcastService = pushToBroadcastService;
         _groupInviteService = groupInviteService;
         _windowHelper = windowHelper;
@@ -166,13 +173,128 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         {
             await _profileService.LoadAsync();
             RefreshProfileList();
-            StatusText = $"{Profiles.Count} profil(s) chargé(s)";
+
+            // Restaurer l'état de la dernière session
+            var appState = await _appStateService.LoadAsync();
+            if (appState is not null)
+            {
+                await RestoreSessionStateAsync(appState);
+            }
+            else
+            {
+                StatusText = $"{Profiles.Count} profil(s) chargé(s)";
+            }
         }
         catch (Exception ex)
         {
             Logger.Error(ex, "Erreur au chargement des profils");
             StatusText = "Erreur au chargement des profils";
         }
+    }
+
+    private async Task RestoreSessionStateAsync(AppState appState)
+    {
+        if (appState.ActiveProfileName is not null)
+        {
+            // Un profil était actif — tenter de le charger
+            var profile = _profileService.GetProfile(appState.ActiveProfileName);
+            if (profile is not null)
+            {
+                var detectedWindows = _detectionService.DetectedWindows;
+                if (detectedWindows.Count > 0)
+                {
+                    ApplyProfile(profile);
+                    _activeProfileName = profile.ProfileName;
+                    SelectedProfile = Profiles.FirstOrDefault(p => p.ProfileName == profile.ProfileName);
+                    StatusText = $"Profil '{profile.ProfileName}' restauré";
+                    Logger.Information("Profil restauré au démarrage : {ProfileName}", profile.ProfileName);
+                }
+                else
+                {
+                    // Les fenêtres ne sont pas encore détectées — appliquer la config hotkeys immédiatement,
+                    // le profil sera appliqué dès la première détection
+                    _pendingProfileName = profile.ProfileName;
+                    InitializeGlobalHotkeys(profile.GlobalHotkeys);
+                    InitializeBroadcastKey(profile.GlobalHotkeys.BroadcastKey);
+                    if (HotkeysActive) RegisterAllHotkeys();
+                    SelectedProfile = Profiles.FirstOrDefault(p => p.ProfileName == profile.ProfileName);
+                    StatusText = $"Profil '{profile.ProfileName}' en attente de fenêtres...";
+                    Logger.Information("Profil en attente de fenêtres : {ProfileName}", profile.ProfileName);
+                }
+            }
+            else
+            {
+                // Le profil n'existe plus — appliquer la config sauvegardée si disponible
+                RestoreHotkeyConfig(appState);
+            }
+        }
+        else
+        {
+            // Pas de profil actif — restaurer la config de raccourcis sauvegardée
+            RestoreHotkeyConfig(appState);
+        }
+    }
+
+    private void RestoreHotkeyConfig(AppState appState)
+    {
+        if (appState.LastHotkeyConfig is not null)
+        {
+            InitializeGlobalHotkeys(appState.LastHotkeyConfig);
+            InitializeBroadcastKey(appState.LastHotkeyConfig.BroadcastKey);
+            if (HotkeysActive) RegisterAllHotkeys();
+            StatusText = "Configuration restaurée";
+            Logger.Information("Configuration hotkeys restaurée depuis la dernière session");
+        }
+        else
+        {
+            StatusText = $"{Profiles.Count} profil(s) chargé(s)";
+        }
+    }
+
+    /// <summary>
+    /// Sauvegarde l'état de la session actuelle (profil actif + config hotkeys).
+    /// Appelé à la fermeture de l'application.
+    /// </summary>
+    public async Task SaveSessionStateAsync()
+    {
+        try
+        {
+            var config = SnapshotGlobalHotkeyConfig();
+            var state = new AppState
+            {
+                ActiveProfileName = _activeProfileName,
+                LastHotkeyConfig = config
+            };
+            await _appStateService.SaveAsync(state);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, "Erreur lors de la sauvegarde de l'état de session");
+        }
+    }
+
+    private GlobalHotkeyConfig SnapshotGlobalHotkeyConfig()
+    {
+        var config = GlobalHotkeyConfig.CreateDefault();
+
+        if (GlobalHotkeys.Count == 4)
+        {
+            config = new GlobalHotkeyConfig
+            {
+                NextWindow = ToBindingConfig(GlobalHotkeys[0]),
+                PreviousWindow = ToBindingConfig(GlobalHotkeys[1]),
+                LastWindow = ToBindingConfig(GlobalHotkeys[2]),
+                FocusLeader = ToBindingConfig(GlobalHotkeys[3]),
+                BroadcastKey = new HotkeyBindingConfig
+                {
+                    DisplayName = BroadcastKeyDisplay,
+                    Modifiers = 0,
+                    VirtualKeyCode = BroadcastKeyVirtualKeyCode
+                }
+            };
+        }
+
+        return config;
     }
 
     // ===== POLLING =====
@@ -358,6 +480,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         {
             _profileService.CreateProfile(profile);
             await _profileService.SaveAsync();
+            _activeProfileName = profile.ProfileName;
             NewProfileName = string.Empty;
             StatusText = $"Profil '{profile.ProfileName}' créé ({profile.Slots.Count} slots)";
             Logger.Information("Profil créé : {ProfileName}", profile.ProfileName);
@@ -383,6 +506,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         }
 
         ApplyProfile(profile);
+        _activeProfileName = profile.ProfileName;
         StatusText = $"Profil '{profile.ProfileName}' chargé";
         Logger.Information("Profil chargé : {ProfileName}", profile.ProfileName);
     }
@@ -411,6 +535,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         _profileService.DeleteProfile(name);
         await _profileService.SaveAsync();
         SelectedProfile = null;
+        if (_activeProfileName == name)
+            _activeProfileName = null;
         StatusText = $"Profil '{name}' supprimé";
         Logger.Information("Profil supprimé : {ProfileName}", name);
     }
@@ -445,6 +571,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         InitializeBroadcastKey(defaults.BroadcastKey);
 
         if (HotkeysActive) RegisterAllHotkeys();
+        _activeProfileName = null;
         StatusText = "Raccourcis réinitialisés aux valeurs par défaut";
         Logger.Information("Raccourcis réinitialisés");
     }
@@ -599,7 +726,27 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     private void OnWindowsChanged(object? sender, WindowsChangedEventArgs e)
     {
-        _dispatcher.Invoke(() => SyncCharacters(e.Current));
+        _dispatcher.Invoke(() =>
+        {
+            // Si un profil est en attente d'application (fenêtres pas encore détectées au démarrage)
+            if (_pendingProfileName is not null && e.Current.Count > 0)
+            {
+                var pendingName = _pendingProfileName;
+                _pendingProfileName = null;
+
+                var profile = _profileService.GetProfile(pendingName);
+                if (profile is not null)
+                {
+                    ApplyProfile(profile);
+                    _activeProfileName = profile.ProfileName;
+                    StatusText = $"Profil '{profile.ProfileName}' restauré";
+                    Logger.Information("Profil appliqué après détection des fenêtres : {ProfileName}", profile.ProfileName);
+                    return;
+                }
+            }
+
+            SyncCharacters(e.Current);
+        });
     }
 
     /// <summary>
