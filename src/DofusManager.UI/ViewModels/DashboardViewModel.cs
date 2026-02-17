@@ -31,6 +31,10 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private Profile? _sessionSnapshot; // snapshot implicite quand aucun profil n'est actif
     private bool _applyingProfile; // guard contre les callbacks durant ApplyProfile
 
+    // Auto-save débounced
+    private CancellationTokenSource? _autoSaveCts;
+    private static readonly TimeSpan AutoSaveDelay = TimeSpan.FromMilliseconds(1500);
+
     // Virtual Key constants
     private const uint VK_TAB = 0x09;
     private const uint VK_SPACE = 0x20;
@@ -201,15 +205,10 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         if (snapshot is not null)
         {
             _sessionSnapshot = snapshot;
-
-            // Appliquer immédiatement les hotkeys depuis le snapshot
-            InitializeGlobalHotkeys(snapshot.GlobalHotkeys);
-            InitializeBroadcastKey(snapshot.GlobalHotkeys.BroadcastKey);
-            if (HotkeysActive) RegisterAllHotkeys();
         }
         else if (appState.LastHotkeyConfig is not null)
         {
-            // Backward compat : ancien format sans snapshot
+            // Backward compat : ancien format sans snapshot — appliquer les hotkeys
             InitializeGlobalHotkeys(appState.LastHotkeyConfig);
             InitializeBroadcastKey(appState.LastHotkeyConfig.BroadcastKey);
             if (HotkeysActive) RegisterAllHotkeys();
@@ -217,40 +216,42 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
         if (appState.ActiveProfileName is not null)
         {
-            var profile = _profileService.GetProfile(appState.ActiveProfileName);
-            if (profile is not null)
-            {
-                _pendingProfileName = profile.ProfileName;
-                SelectedProfile = Profiles.FirstOrDefault(p => p.ProfileName == profile.ProfileName);
+            _pendingProfileName = appState.ActiveProfileName;
+            SelectedProfile = Profiles.FirstOrDefault(p => p.ProfileName == appState.ActiveProfileName);
+        }
 
-                // Afficher immédiatement les personnages déconnectés (grisés)
-                var source = snapshot ?? profile;
-                ApplyProfile(source);
-                var connected = Characters.Count(c => c.IsConnected);
-                StatusText = connected > 0
-                    ? $"Profil '{profile.ProfileName}' restauré ({connected}/{Characters.Count} connectés)"
-                    : $"Profil '{profile.ProfileName}' — en attente de fenêtres ({Characters.Count} personnages)";
-                Logger.Information("Profil restauré au démarrage : {ProfileName}", profile.ProfileName);
-            }
-            else
-            {
-                StatusText = snapshot is not null ? "Configuration restaurée" : $"{Profiles.Count} profil(s) chargé(s)";
-            }
+        // Toujours appliquer le merge — même sans fenêtres détectées.
+        // Les personnages apparaissent grisés immédiatement au démarrage.
+        // Quand les fenêtres sont détectées par le polling, elles se reconnectent automatiquement.
+        var currentWindows = _detectionService.DetectedWindows;
+        MergeWindowsWithSnapshot(currentWindows);
+
+        var connected = Characters.Count(c => c.IsConnected);
+        var connectingCount = currentWindows.Count(w => IsConnectingTitle(w.Title));
+        string statusBase;
+
+        if (_activeProfileName is not null)
+        {
+            statusBase = connected > 0
+                ? $"Profil '{_activeProfileName}' restauré ({connected}/{Characters.Count} connectés)"
+                : $"Profil '{_activeProfileName}' — en attente de fenêtres ({Characters.Count} personnages)";
+            Logger.Information("Profil restauré au démarrage : {ProfileName}", _activeProfileName);
+        }
+        else if (snapshot is not null)
+        {
+            statusBase = connected > 0
+                ? $"Configuration restaurée ({connected}/{Characters.Count} connectés)"
+                : $"Configuration restaurée — en attente de fenêtres ({Characters.Count} personnages)";
+            Logger.Information("Configuration restaurée depuis la dernière session");
         }
         else
         {
-            // Pas de profil — appliquer le snapshot si des fenêtres sont déjà détectées
-            if (snapshot is not null && _detectionService.DetectedWindows.Count > 0)
-            {
-                ApplyProfile(snapshot);
-                StatusText = "Configuration restaurée";
-            }
-            else
-            {
-                StatusText = snapshot is not null ? "Configuration restaurée" : $"{Profiles.Count} profil(s) chargé(s)";
-            }
-            Logger.Information("Configuration restaurée depuis la dernière session");
+            statusBase = $"{Profiles.Count} profil(s) chargé(s)";
         }
+
+        StatusText = connectingCount > 0
+            ? $"{statusBase} + {connectingCount} en cours de connexion"
+            : statusBase;
     }
 
     /// <summary>
@@ -261,6 +262,11 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     {
         try
         {
+            // Annuler le debounce en cours — on sauvegarde immédiatement
+            _autoSaveCts?.Cancel();
+            _autoSaveCts?.Dispose();
+            _autoSaveCts = null;
+
             // Toujours sauvegarder un snapshot frais de l'état actuel
             var snapshot = Characters.Any(c => c.IsConnected)
                 ? SnapshotCurrentProfile("__session__")
@@ -286,7 +292,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     {
         Logger.Information("Scan manuel déclenché");
         var windows = _detectionService.DetectOnce();
-        SyncCharacters(windows);
+        MergeWindowsWithSnapshot(windows);
     }
 
     [RelayCommand]
@@ -712,86 +718,161 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     private void OnWindowsChanged(object? sender, WindowsChangedEventArgs e)
     {
-        _dispatcher.Invoke(() =>
-        {
-            // Quand un profil/snapshot est actif, toujours réappliquer pour montrer
-            // les personnages connectés ET déconnectés (grisés)
-            var profileToApply = ResolveProfileToApply();
-            if (profileToApply is not null && TryApplyProfile(profileToApply, e.Current))
-                return;
-
-            SyncCharacters(e.Current);
-        });
+        _dispatcher.Invoke(() => MergeWindowsWithSnapshot(e.Current));
     }
 
     /// <summary>
-    /// Détermine quel profil/snapshot réappliquer.
-    /// Le snapshot de session a priorité sur le profil disque (il capture les modifs utilisateur).
+    /// Algorithme unifié de merge : matche les fenêtres détectées contre le snapshot de session
+    /// (ou profil pending au démarrage). Les slots non matchés apparaissent grisés (déconnectés).
+    /// Les fenêtres non matchées sont ajoutées en fin de liste.
     /// </summary>
-    private Profile? ResolveProfileToApply()
+    private void MergeWindowsWithSnapshot(IReadOnlyList<DofusWindow> currentWindows)
     {
-        // Profil en attente (démarrage, pas encore de snapshot)
+        // Séparer fenêtres prêtes (titre personnage) et en cours de connexion (titre générique)
+        var readyWindows = currentWindows.Where(w => !IsConnectingTitle(w.Title)).ToList();
+        var connectingCount = currentWindows.Count - readyWindows.Count;
+
+        // Consommer le pending profile name si présent (startup)
         if (_pendingProfileName is not null && _sessionSnapshot is null)
-            return _profileService.GetProfile(_pendingProfileName);
-
-        // Session snapshot (capture les modifs : ordre, leader, hotkeys)
-        if (_sessionSnapshot is not null)
-            return _sessionSnapshot;
-
-        // Profil actif sur disque (fallback si pas de snapshot)
-        if (_activeProfileName is not null)
-            return _profileService.GetProfile(_activeProfileName);
-
-        return null;
-    }
-
-    /// <summary>
-    /// Tente d'appliquer un profil. Pour un profil actif/pending, applique toujours (affiche les
-    /// personnages déconnectés en grisé). Pour un snapshot de session, n'applique que si au moins
-    /// un pattern matche.
-    /// </summary>
-    private bool TryApplyProfile(Profile profile, IReadOnlyList<DofusWindow> currentWindows)
-    {
-        var hasProfileOrPending = _activeProfileName is not null || _pendingProfileName is not null;
-
-        if (!hasProfileOrPending)
         {
-            // Snapshot de session — ne réappliquer que si au moins un pattern matche
-            var anyMatch = profile.Slots.Any(slot =>
-                currentWindows.Any(w => GlobMatcher.IsMatch(slot.WindowTitlePattern, w.Title)));
-            if (!anyMatch) return false;
-        }
-
-        ApplyProfile(profile);
-
-        // Consommer le pending et tracker le profil actif
-        if (_pendingProfileName is not null)
-        {
+            var pendingProfile = _profileService.GetProfile(_pendingProfileName);
+            if (pendingProfile is not null)
+                _sessionSnapshot = pendingProfile;
             _activeProfileName = _pendingProfileName;
             _pendingProfileName = null;
-            var connected = Characters.Count(c => c.IsConnected);
-            var total = Characters.Count;
-            StatusText = $"Profil '{_activeProfileName}' restauré ({connected}/{total} connectés)";
-            Logger.Information("Profil restauré au démarrage : {ProfileName} ({Connected}/{Total})",
-                _activeProfileName, connected, total);
         }
-        else if (_activeProfileName is not null)
+
+        if (_sessionSnapshot is not null)
         {
-            Logger.Information("Profil réappliqué après changement de fenêtres : {ProfileName}", _activeProfileName);
+            // Phase 1 : Matcher chaque slot du snapshot contre les fenêtres prêtes
+            var allRows = new List<CharacterRowViewModel>();
+            var usedHandles = new HashSet<nint>();
+            nint leaderHandle = 0;
+
+            _applyingProfile = true;
+            try
+            {
+                foreach (var slot in _sessionSnapshot.Slots.OrderBy(s => s.Index))
+                {
+                    uint modifiers = slot.FocusHotkeyModifiers;
+                    uint vk = slot.FocusHotkeyVirtualKeyCode;
+                    string display = slot.FocusHotkey ?? string.Empty;
+
+                    if (vk == 0)
+                    {
+                        var def = HotkeyDefaults.GetDefaultSlotHotkey(slot.Index);
+                        if (def.HasValue)
+                        {
+                            modifiers = (uint)def.Value.Modifiers;
+                            vk = def.Value.VirtualKeyCode;
+                            display = def.Value.DisplayName;
+                        }
+                    }
+
+                    var match = readyWindows.FirstOrDefault(w =>
+                        GlobMatcher.IsMatch(slot.WindowTitlePattern, w.Title) &&
+                        !usedHandles.Contains(w.Handle));
+
+                    if (match is not null)
+                    {
+                        usedHandles.Add(match.Handle);
+                        allRows.Add(new CharacterRowViewModel(this)
+                        {
+                            Handle = match.Handle,
+                            SlotIndex = allRows.Count,
+                            Title = match.Title,
+                            ProcessId = match.ProcessId,
+                            IsLeader = slot.IsLeader,
+                            HotkeyModifiers = modifiers,
+                            VirtualKeyCode = vk,
+                            HotkeyDisplay = display
+                        });
+
+                        if (slot.IsLeader)
+                            leaderHandle = match.Handle;
+                    }
+                    else
+                    {
+                        // Déconnecté — placeholder grisé
+                        allRows.Add(new CharacterRowViewModel(this)
+                        {
+                            Handle = 0,
+                            SlotIndex = allRows.Count,
+                            Title = slot.CharacterName,
+                            ProcessId = 0,
+                            IsLeader = slot.IsLeader,
+                            HotkeyModifiers = modifiers,
+                            VirtualKeyCode = vk,
+                            HotkeyDisplay = display
+                        });
+                    }
+                }
+
+                // Phase 2 : Ajouter les fenêtres prêtes non matchées en fin de liste (nouvelles fenêtres)
+                foreach (var w in readyWindows)
+                {
+                    if (!usedHandles.Contains(w.Handle))
+                    {
+                        var slotIndex = allRows.Count;
+                        var def = HotkeyDefaults.GetDefaultSlotHotkey(slotIndex);
+                        allRows.Add(new CharacterRowViewModel(this)
+                        {
+                            Handle = w.Handle,
+                            SlotIndex = slotIndex,
+                            Title = w.Title,
+                            ProcessId = w.ProcessId,
+                            HotkeyModifiers = def.HasValue ? (uint)def.Value.Modifiers : 0,
+                            VirtualKeyCode = def.HasValue ? def.Value.VirtualKeyCode : 0,
+                            HotkeyDisplay = def?.DisplayName ?? string.Empty
+                        });
+                    }
+                }
+
+                // Remplacer la liste des personnages
+                Characters.Clear();
+                foreach (var row in allRows)
+                    Characters.Add(row);
+
+                // Phase 3 : Mettre à jour FocusService, leader, hotkeys
+                _focusService.UpdateSlots(GetCurrentDofusWindows());
+                if (leaderHandle != 0)
+                    _focusService.SetLeader(leaderHandle);
+
+                InitializeGlobalHotkeys(_sessionSnapshot.GlobalHotkeys);
+                InitializeBroadcastKey(_sessionSnapshot.GlobalHotkeys.BroadcastKey);
+
+                if (HotkeysActive)
+                    RegisterAllHotkeys();
+            }
+            finally
+            {
+                _applyingProfile = false;
+            }
+
+            var connected = Characters.Count(c => c.IsConnected);
+            var statusBase = _activeProfileName is not null
+                ? $"Profil '{_activeProfileName}' — {connected}/{Characters.Count} connectés"
+                : $"{connected}/{Characters.Count} personnage(s) connecté(s)";
+            StatusText = connectingCount > 0
+                ? $"{statusBase} + {connectingCount} en cours de connexion"
+                : statusBase;
         }
         else
         {
-            Logger.Information("Snapshot de session réappliqué après changement de fenêtres");
+            // Pas de snapshot — mode premier lancement
+            SyncCharactersFresh(currentWindows, connectingCount);
         }
 
-        return true;
+        // Capturer l'état et auto-sauvegarder
+        UpdateSessionSnapshot();
     }
 
     /// <summary>
-    /// Synchronise la liste des personnages avec les fenêtres détectées.
-    /// Préserve l'ordre existant, ajoute les nouvelles en fin, supprime les disparues.
+    /// Synchronisation simple quand aucun snapshot n'existe (premier lancement).
+    /// Préserve l'ordre existant, ajoute les nouvelles fenêtres en fin, supprime les disparues.
+    /// Les fenêtres en cours de connexion (titre générique) sont ignorées.
     /// </summary>
-    private void SyncCharacters(IReadOnlyList<DofusWindow> windows)
+    private void SyncCharactersFresh(IReadOnlyList<DofusWindow> windows, int connectingCount)
     {
         var existingHandles = Characters
             .Where(c => c.IsConnected)
@@ -799,10 +880,11 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             .ToHashSet();
         var currentHandles = windows.Select(w => w.Handle).ToHashSet();
 
-        // Supprimer les connectés qui ont disparu (ne pas toucher les déconnectés = placeholders profil)
+        // Supprimer les connectés qui ont disparu ou dont le titre est devenu générique
         for (var i = Characters.Count - 1; i >= 0; i--)
         {
-            if (Characters[i].IsConnected && !currentHandles.Contains(Characters[i].Handle))
+            if (Characters[i].IsConnected &&
+                (!currentHandles.Contains(Characters[i].Handle) || IsConnectingTitle(Characters[i].Title)))
                 Characters.RemoveAt(i);
         }
 
@@ -814,10 +896,10 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 c.Title = updated.Title;
         }
 
-        // Ajouter les nouvelles fenêtres en fin
+        // Ajouter les nouvelles fenêtres prêtes en fin (ignorer les titres génériques)
         foreach (var w in windows)
         {
-            if (!existingHandles.Contains(w.Handle))
+            if (!existingHandles.Contains(w.Handle) && !IsConnectingTitle(w.Title))
             {
                 var slotIndex = Characters.Count;
                 var def = HotkeyDefaults.GetDefaultSlotHotkey(slotIndex);
@@ -853,18 +935,58 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             _focusService.SetLeader(leaderRow.Handle);
 
         var connectedCount = Characters.Count(c => c.IsConnected);
-        StatusText = $"{connectedCount} fenêtre(s) Dofus détectée(s)";
+        var statusBase = $"{connectedCount} fenêtre(s) Dofus détectée(s)";
+        StatusText = connectingCount > 0
+            ? $"{statusBase} + {connectingCount} en cours de connexion"
+            : statusBase;
     }
 
     /// <summary>
-    /// Met à jour le snapshot de session implicite (ordre des slots, leader, hotkeys).
-    /// Utilisé pour restaurer la config quand les fenêtres sont relancées sans profil actif.
+    /// Met à jour le snapshot de session implicite (ordre des slots, leader, hotkeys)
+    /// et planifie une sauvegarde automatique sur disque.
     /// </summary>
     private void UpdateSessionSnapshot()
     {
         if (_applyingProfile) return;
         if (Characters.Count > 0)
             _sessionSnapshot = SnapshotCurrentProfile("__session__");
+        ScheduleAutoSave();
+    }
+
+    /// <summary>
+    /// Planifie une sauvegarde automatique sur disque avec debounce.
+    /// Annule le save précédent si appelé à nouveau avant le délai.
+    /// </summary>
+    private void ScheduleAutoSave()
+    {
+        _autoSaveCts?.Cancel();
+        _autoSaveCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _autoSaveCts = cts;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(AutoSaveDelay, cts.Token);
+                var snapshot = _sessionSnapshot;
+                var state = new AppState
+                {
+                    ActiveProfileName = _activeProfileName,
+                    SessionSnapshot = snapshot
+                };
+                await _appStateService.SaveAsync(state);
+                Logger.Debug("Auto-save effectué");
+            }
+            catch (TaskCanceledException)
+            {
+                // Debounce annulé, ignoré
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Erreur lors de l'auto-save");
+            }
+        }, CancellationToken.None);
     }
 
     private IReadOnlyList<DofusWindow> GetCurrentDofusWindows()
@@ -995,13 +1117,19 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private Profile SnapshotCurrentProfile(string profileName)
     {
         var profile = new Profile { ProfileName = profileName };
+        var slotIndex = 0;
 
         for (var i = 0; i < Characters.Count; i++)
         {
             var c = Characters[i];
+
+            // Exclure les fenêtres connectées avec un titre générique (en cours de connexion)
+            if (c.IsConnected && IsConnectingTitle(c.Title))
+                continue;
+
             profile.Slots.Add(new ProfileSlot
             {
-                Index = i,
+                Index = slotIndex++,
                 CharacterName = c.Title,
                 WindowTitlePattern = $"*{ExtractCharacterName(c.Title)}*",
                 IsLeader = c.IsLeader,
@@ -1128,6 +1256,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         {
             _applyingProfile = false;
         }
+        UpdateSessionSnapshot();
     }
 
     private static string ExtractCharacterName(string windowTitle)
@@ -1137,12 +1266,26 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         return dashIndex > 0 ? windowTitle[..dashIndex].Trim() : windowTitle.Trim();
     }
 
+    /// <summary>
+    /// Identifie les titres génériques d'une fenêtre Dofus en cours de connexion.
+    /// "Dofus" → true, "Dofus - 3.4.18.19 - Release" → true, "Cuckoolo - Pandawa - ..." → false.
+    /// </summary>
+    internal static bool IsConnectingTitle(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return true;
+        var name = ExtractCharacterName(title);
+        return name.Equals("Dofus", StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith("Dofus ", StringComparison.OrdinalIgnoreCase);
+    }
+
     public void Dispose()
     {
         _detectionService.WindowsChanged -= OnWindowsChanged;
         _hotkeyService.HotkeyPressed -= OnHotkeyPressed;
         _profileService.ProfilesChanged -= OnProfilesChanged;
         _pushToBroadcastService.BroadcastPerformed -= OnBroadcastPerformed;
+        _autoSaveCts?.Cancel();
+        _autoSaveCts?.Dispose();
         StopAltPollTimer();
         _hotkeyService.Dispose();
         GC.SuppressFinalize(this);

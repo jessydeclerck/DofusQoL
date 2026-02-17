@@ -6,7 +6,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <UseWPF>true</UseWPF>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.2" />
@@ -18,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DofusManager.Core\DofusManager.Core.csproj" />
+    <ProjectReference Include="..\DofusManager.UI\DofusManager.UI.csproj" />
   </ItemGroup>
 
 </Project>

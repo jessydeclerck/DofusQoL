@@ -95,6 +95,26 @@
   - Backward compat : profils legacy sans BroadcastKey → défaut Alt
   - Tests unitaires (+2 : CreateDefault_BroadcastKey_IsAlt, JsonDeserialization_WithoutBroadcastKey) — total 208
 
+## Refonte persistance de session
+- [x] Auto-save débounced (1500ms) — chaque action utilisateur persiste automatiquement sur disque
+- [x] MergeWindowsWithSnapshot unifié — remplace le double chemin (profil/sans profil) par un seul algorithme de merge
+- [x] Restauration inconditionnelle au démarrage — les personnages grisés apparaissent immédiatement, même sans fenêtres
+- [x] ApplyProfile met à jour le snapshot — le chargement d'un profil est immédiatement capturé et persisté
+- [x] SyncCharactersFresh conservé pour le mode premier lancement (pas de snapshot)
+- [x] SaveSessionStateAsync annule le debounce en cours avant de sauvegarder immédiatement
+- [x] Dispose nettoie le CancellationTokenSource auto-save
+- [x] Suppression de ResolveProfileToApply(), TryApplyProfile(), SyncCharacters() (remplacés par MergeWindowsWithSnapshot)
+- [x] Tests unitaires (14 nouveaux : SessionPersistenceTests — merge, auto-save, restore, reconnexion, idempotence) — total 231
+
+## Filtrage des fenêtres en cours de connexion
+- [x] `IsConnectingTitle()` — identifie les titres génériques ("Dofus", "Dofus - version")
+- [x] `MergeWindowsWithSnapshot` — fenêtres en connexion exclues du matching glob et de l'ajout en fin de liste
+- [x] `SyncCharactersFresh` — fenêtres en connexion exclues de l'ajout de nouvelles entrées
+- [x] `SnapshotCurrentProfile` — fenêtres connectées avec titre générique exclues du snapshot
+- [x] StatusText — compteur "X en cours de connexion" affiché dans la barre de statut (merge, sync, restore)
+- [x] `InternalsVisibleTo` ajouté dans DofusManager.UI.csproj pour les tests
+- [x] Tests unitaires (5 nouveaux + 7 Theory cases : IsConnectingTitle, Merge/Snapshot/StatusText) — total 242
+
 ## Itération 5 — Session manager (F5)
 - À planifier
 

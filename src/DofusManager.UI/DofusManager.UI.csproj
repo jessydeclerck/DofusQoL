@@ -10,6 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="DofusManager.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Resource Include="Assets\ClassIcons\*.jpg" />
     <Resource Include="Assets\app.ico" />
   </ItemGroup>
