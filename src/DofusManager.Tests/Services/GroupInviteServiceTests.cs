@@ -1,0 +1,223 @@
+using DofusManager.Core.Models;
+using DofusManager.Core.Services;
+using DofusManager.Core.Win32;
+using Moq;
+using Xunit;
+
+namespace DofusManager.Tests.Services;
+
+public class GroupInviteServiceTests
+{
+    private readonly Mock<IWin32WindowHelper> _mockHelper;
+    private readonly GroupInviteService _service;
+
+    private const ushort VK_RETURN = 0x0D;
+    private const ushort VK_SPACE = 0x20;
+
+    public GroupInviteServiceTests()
+    {
+        _mockHelper = new Mock<IWin32WindowHelper>();
+
+        // Par défaut, FocusWindow réussit et GetForegroundWindow retourne le dernier handle focusé
+        nint lastFocusedHandle = 0;
+        _mockHelper.Setup(h => h.FocusWindow(It.IsAny<nint>()))
+            .Callback<nint>(handle => lastFocusedHandle = handle)
+            .Returns(true);
+        _mockHelper.Setup(h => h.GetForegroundWindow())
+            .Returns(() => lastFocusedHandle);
+
+        _mockHelper.Setup(h => h.SendKeyPress(It.IsAny<ushort>())).Returns(true);
+        _mockHelper.Setup(h => h.SendText(It.IsAny<string>())).Returns(true);
+
+        _service = new GroupInviteService(_mockHelper.Object);
+    }
+
+    private static List<DofusWindow> CreateWindows(params string[] names)
+    {
+        return names.Select((name, i) => new DofusWindow
+        {
+            Handle = (nint)((i + 1) * 100),
+            ProcessId = i + 1,
+            Title = $"{name} - Pandawa - 3.4.18.19 - Release",
+            IsVisible = true,
+            IsMinimized = false
+        }).ToList();
+    }
+
+    // --- ExtractCharacterName ---
+
+    [Theory]
+    [InlineData("Cuckoolo - Pandawa - 3.4.18.19 - Release", "Cuckoolo")]
+    [InlineData("MonPerso - Cra - 3.4.18.19 - Release", "MonPerso")]
+    [InlineData("Simple", "Simple")]
+    [InlineData("", "")]
+    [InlineData("  ", "")]
+    public void ExtractCharacterName_ReturnsFirstToken(string title, string expected)
+    {
+        var result = IGroupInviteService.ExtractCharacterName(title);
+        Assert.Equal(expected, result);
+    }
+
+    // --- InviteAllAsync ---
+
+    [Fact]
+    public async Task InviteAllAsync_InvitesAllExceptLeader()
+    {
+        var windows = CreateWindows("Leader", "Perso2", "Perso3");
+        var leader = windows[0];
+
+        var result = await _service.InviteAllAsync(windows, leader);
+
+        Assert.True(result.Success);
+        Assert.Equal(2, result.Invited);
+    }
+
+    [Fact]
+    public async Task InviteAllAsync_FocusesLeaderWindow()
+    {
+        var windows = CreateWindows("Leader", "Perso2");
+        var leader = windows[0];
+
+        await _service.InviteAllAsync(windows, leader);
+
+        _mockHelper.Verify(h => h.FocusWindow(leader.Handle), Times.Once);
+    }
+
+    [Fact]
+    public async Task InviteAllAsync_SendsCorrectCommands()
+    {
+        var windows = CreateWindows("Leader", "Perso2");
+        var leader = windows[0];
+
+        var callOrder = new List<string>();
+
+        _mockHelper.Setup(h => h.SendKeyPress(VK_SPACE))
+            .Callback(() => callOrder.Add("SPACE"))
+            .Returns(true);
+        _mockHelper.Setup(h => h.SendKeyPress(VK_RETURN))
+            .Callback(() => callOrder.Add("ENTER"))
+            .Returns(true);
+        _mockHelper.Setup(h => h.SendText(It.IsAny<string>()))
+            .Callback<string>(text => callOrder.Add($"TEXT:{text}"))
+            .Returns(true);
+
+        await _service.InviteAllAsync(windows, leader);
+
+        // Séquence attendue : SPACE (ouvrir chat), TEXT:/invite Perso2, ENTER (envoyer)
+        Assert.Equal(3, callOrder.Count);
+        Assert.Equal("SPACE", callOrder[0]);
+        Assert.Equal("TEXT:/invite Perso2", callOrder[1]);
+        Assert.Equal("ENTER", callOrder[2]);
+    }
+
+    [Fact]
+    public async Task InviteAllAsync_MultipleCharacters_SendsAllInvites()
+    {
+        var windows = CreateWindows("Leader", "Perso2", "Perso3", "Perso4");
+        var leader = windows[0];
+
+        var inviteTexts = new List<string>();
+        _mockHelper.Setup(h => h.SendText(It.IsAny<string>()))
+            .Callback<string>(text => inviteTexts.Add(text))
+            .Returns(true);
+
+        var result = await _service.InviteAllAsync(windows, leader);
+
+        Assert.Equal(3, result.Invited);
+        Assert.Equal(3, inviteTexts.Count);
+        Assert.Contains("/invite Perso2", inviteTexts);
+        Assert.Contains("/invite Perso3", inviteTexts);
+        Assert.Contains("/invite Perso4", inviteTexts);
+    }
+
+    [Fact]
+    public async Task InviteAllAsync_SingleWindow_ReturnsZeroInvited()
+    {
+        var windows = CreateWindows("Leader");
+        var leader = windows[0];
+
+        var result = await _service.InviteAllAsync(windows, leader);
+
+        Assert.True(result.Success);
+        Assert.Equal(0, result.Invited);
+        _mockHelper.Verify(h => h.FocusWindow(It.IsAny<nint>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task InviteAllAsync_EmptyWindows_ReturnsZeroInvited()
+    {
+        var leader = new DofusWindow
+        {
+            Handle = 100, ProcessId = 1, Title = "Leader - Cra",
+            IsVisible = true, IsMinimized = false
+        };
+
+        var result = await _service.InviteAllAsync(new List<DofusWindow>(), leader);
+
+        Assert.True(result.Success);
+        Assert.Equal(0, result.Invited);
+    }
+
+    [Fact]
+    public async Task InviteAllAsync_ForegroundMismatch_RetriesAndFails()
+    {
+        var windows = CreateWindows("Leader", "Perso2");
+        var leader = windows[0];
+
+        // FocusWindow réussit mais GetForegroundWindow retourne toujours un autre handle
+        _mockHelper.Setup(h => h.FocusWindow(It.IsAny<nint>())).Returns(true);
+        _mockHelper.Setup(h => h.GetForegroundWindow()).Returns((nint)999);
+
+        var result = await _service.InviteAllAsync(windows, leader);
+
+        Assert.False(result.Success);
+        Assert.Equal(0, result.Invited);
+        // Vérifie qu'il a réessayé 3 fois
+        _mockHelper.Verify(h => h.FocusWindow(leader.Handle), Times.Exactly(3));
+    }
+
+    [Fact]
+    public async Task InviteAllAsync_LeaderEmptyTitle_ReturnsError()
+    {
+        var leader = new DofusWindow
+        {
+            Handle = 100, ProcessId = 1, Title = "",
+            IsVisible = true, IsMinimized = false
+        };
+        var windows = new List<DofusWindow>
+        {
+            leader,
+            new DofusWindow
+            {
+                Handle = 200, ProcessId = 2, Title = "Perso2 - Cra",
+                IsVisible = true, IsMinimized = false
+            }
+        };
+
+        var result = await _service.InviteAllAsync(windows, leader);
+
+        Assert.False(result.Success);
+        Assert.Contains("nom du leader", result.ErrorMessage!);
+    }
+
+    [Fact]
+    public async Task InviteAllAsync_SkipsWindowsWithEmptyName()
+    {
+        var windows = new List<DofusWindow>
+        {
+            new() { Handle = 100, ProcessId = 1, Title = "Leader - Cra", IsVisible = true, IsMinimized = false },
+            new() { Handle = 200, ProcessId = 2, Title = "", IsVisible = true, IsMinimized = false },
+            new() { Handle = 300, ProcessId = 3, Title = "Perso3 - Enu", IsVisible = true, IsMinimized = false }
+        };
+        var leader = windows[0];
+
+        var result = await _service.InviteAllAsync(windows, leader);
+
+        Assert.True(result.Success);
+        Assert.Equal(1, result.Invited);
+
+        // Seul /invite Perso3 doit être envoyé
+        _mockHelper.Verify(h => h.SendText("/invite Perso3"), Times.Once);
+        _mockHelper.Verify(h => h.SendText(It.Is<string>(s => s.Contains("invite"))), Times.Once);
+    }
+}

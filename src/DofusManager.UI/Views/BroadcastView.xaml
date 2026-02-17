@@ -9,6 +9,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- Formulaire d'ajout de preset -->
@@ -142,12 +143,22 @@
             </Grid>
         </GroupBox>
 
+        <!-- Groupe -->
+        <GroupBox Grid.Row="3" Header="Groupe" Margin="0,10,0,0" Padding="5">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Inviter tout le monde"
+                        Command="{Binding InviteAllCommand}" Padding="10,5" />
+                <TextBlock VerticalAlignment="Center" Margin="10,0,0,0"
+                           Text="Envoie /invite à tous les personnages depuis le leader." Foreground="Gray" />
+            </StackPanel>
+        </GroupBox>
+
         <!-- Info -->
-        <TextBlock Grid.Row="3" Margin="0,10,0,0" Foreground="Gray" TextWrapping="Wrap"
+        <TextBlock Grid.Row="4" Margin="0,10,0,0" Foreground="Gray" TextWrapping="Wrap"
                    Text="Les presets envoient un seul input (touche OU clic) vers les fenêtres Dofus sélectionnées, avec un délai aléatoire entre chaque envoi." />
 
         <!-- Statut -->
-        <StatusBar Grid.Row="4" Margin="0,10,0,0">
+        <StatusBar Grid.Row="5" Margin="0,10,0,0">
             <StatusBarItem Content="{Binding StatusText}" />
         </StatusBar>
     </Grid>

@@ -43,6 +43,7 @@ public partial class App : Application
         services.AddSingleton<IProfileService, ProfileService>();
         services.AddSingleton<IBroadcastService, BroadcastService>();
         services.AddSingleton<IPushToBroadcastService, PushToBroadcastService>();
+        services.AddSingleton<IGroupInviteService, GroupInviteService>();
 
         // ViewModels (Singleton pour éviter les doubles abonnements aux événements)
         services.AddSingleton<HotkeyViewModel>();
