@@ -24,7 +24,7 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Restore dependencies
-        run: dotnet restore src/DofusManager.sln
+        run: dotnet restore DofusQoL.sln
 
       - name: Run tests
         run: dotnet test src/DofusManager.Tests/ --no-restore
