@@ -97,20 +97,17 @@ public class WindowHelper : IWin32WindowHelper
                 PInvoke.ShowWindow(hWnd, SHOW_WINDOW_CMD.SW_RESTORE);
             }
 
-            // ALT-key trick : envoyer un ALT down+up synthétique via SendInput
-            // pour satisfaire la condition "le process appelant a reçu le dernier input"
-            // qui est requise par SetForegroundWindow. Sans ça, SetForegroundWindow
-            // échoue silencieusement depuis un thread pool (Task.Run).
-            var inputs = new Windows.Win32.UI.Input.KeyboardAndMouse.INPUT[2];
-            inputs[0].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_KEYBOARD;
-            inputs[0].Anonymous.ki.wVk = (Windows.Win32.UI.Input.KeyboardAndMouse.VIRTUAL_KEY)0x12; // VK_MENU (ALT)
-            inputs[0].Anonymous.ki.dwFlags = 0; // key down
+            // No-op mouse move (0,0) via SendInput pour satisfaire la condition
+            // "le process appelant a reçu le dernier input event" requise par
+            // SetForegroundWindow. Contrairement au ALT-key trick, ceci n'envoie
+            // aucune touche au jeu et n'interfère pas avec GetAsyncKeyState.
+            var noop = new Windows.Win32.UI.Input.KeyboardAndMouse.INPUT[1];
+            noop[0].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_MOUSE;
+            noop[0].Anonymous.mi.dwFlags = Windows.Win32.UI.Input.KeyboardAndMouse.MOUSE_EVENT_FLAGS.MOUSEEVENTF_MOVE;
+            noop[0].Anonymous.mi.dx = 0;
+            noop[0].Anonymous.mi.dy = 0;
 
-            inputs[1].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_KEYBOARD;
-            inputs[1].Anonymous.ki.wVk = (Windows.Win32.UI.Input.KeyboardAndMouse.VIRTUAL_KEY)0x12;
-            inputs[1].Anonymous.ki.dwFlags = Windows.Win32.UI.Input.KeyboardAndMouse.KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
-
-            PInvoke.SendInput(inputs.AsSpan(), sizeof(Windows.Win32.UI.Input.KeyboardAndMouse.INPUT));
+            PInvoke.SendInput(noop.AsSpan(), sizeof(Windows.Win32.UI.Input.KeyboardAndMouse.INPUT));
 
             var result = PInvoke.SetForegroundWindow(hWnd);
             Logger.Debug("FocusWindow {Handle} → SetForegroundWindow={Result}", handle, result);
