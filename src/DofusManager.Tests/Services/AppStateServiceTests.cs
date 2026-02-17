@@ -34,10 +34,16 @@ public class AppStateServiceTests : IDisposable
     [Fact]
     public async Task SaveAsync_PuisLoadAsync_RoundTrip_SansProfile()
     {
+        var snapshot = new Profile
+        {
+            ProfileName = "__session__",
+            GlobalHotkeys = GlobalHotkeyConfig.CreateDefault()
+        };
+
         var state = new AppState
         {
             ActiveProfileName = null,
-            LastHotkeyConfig = GlobalHotkeyConfig.CreateDefault()
+            SessionSnapshot = snapshot
         };
 
         await _service.SaveAsync(state);
@@ -45,9 +51,9 @@ public class AppStateServiceTests : IDisposable
 
         Assert.NotNull(loaded);
         Assert.Null(loaded.ActiveProfileName);
-        Assert.NotNull(loaded.LastHotkeyConfig);
-        Assert.Equal("Ctrl+Tab", loaded.LastHotkeyConfig.NextWindow.DisplayName);
-        Assert.Equal("Alt", loaded.LastHotkeyConfig.BroadcastKey.DisplayName);
+        Assert.NotNull(loaded.SessionSnapshot);
+        Assert.Equal("Ctrl+Tab", loaded.SessionSnapshot.GlobalHotkeys.NextWindow.DisplayName);
+        Assert.Equal("Alt", loaded.SessionSnapshot.GlobalHotkeys.BroadcastKey.DisplayName);
     }
 
     [Fact]
@@ -56,7 +62,7 @@ public class AppStateServiceTests : IDisposable
         var state = new AppState
         {
             ActiveProfileName = "Team Donjon",
-            LastHotkeyConfig = GlobalHotkeyConfig.CreateDefault()
+            SessionSnapshot = new Profile { ProfileName = "__session__" }
         };
 
         await _service.SaveAsync(state);
@@ -67,41 +73,65 @@ public class AppStateServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SaveAsync_PuisLoadAsync_ConfigCustom_PreserveValeurs()
+    public async Task SaveAsync_PuisLoadAsync_SnapshotAvecSlots_PreserveValeurs()
     {
-        var customConfig = new GlobalHotkeyConfig
+        var snapshot = new Profile
         {
-            NextWindow = new HotkeyBindingConfig
+            ProfileName = "__session__",
+            GlobalHotkeys = new GlobalHotkeyConfig
             {
-                DisplayName = "Ctrl+Space",
-                Modifiers = 2, // MOD_CONTROL
-                VirtualKeyCode = 0x20 // VK_SPACE
-            },
-            PreviousWindow = GlobalHotkeyConfig.CreateDefault().PreviousWindow,
-            LastWindow = GlobalHotkeyConfig.CreateDefault().LastWindow,
-            FocusLeader = GlobalHotkeyConfig.CreateDefault().FocusLeader,
-            BroadcastKey = new HotkeyBindingConfig
-            {
-                DisplayName = "Ctrl",
-                VirtualKeyCode = 0xA2 // VK_LCONTROL
+                NextWindow = new HotkeyBindingConfig
+                {
+                    DisplayName = "Ctrl+Space",
+                    Modifiers = 2,
+                    VirtualKeyCode = 0x20
+                },
+                PreviousWindow = GlobalHotkeyConfig.CreateDefault().PreviousWindow,
+                LastWindow = GlobalHotkeyConfig.CreateDefault().LastWindow,
+                FocusLeader = GlobalHotkeyConfig.CreateDefault().FocusLeader,
+                BroadcastKey = new HotkeyBindingConfig
+                {
+                    DisplayName = "Ctrl",
+                    VirtualKeyCode = 0xA2
+                }
             }
         };
+        snapshot.Slots.Add(new ProfileSlot
+        {
+            Index = 0,
+            CharacterName = "Cuckoolo",
+            WindowTitlePattern = "*Cuckoolo*",
+            IsLeader = true,
+            FocusHotkey = "F1",
+            FocusHotkeyVirtualKeyCode = 0x70
+        });
+        snapshot.Slots.Add(new ProfileSlot
+        {
+            Index = 1,
+            CharacterName = "Altchar",
+            WindowTitlePattern = "*Altchar*",
+            IsLeader = false,
+            FocusHotkey = "F2",
+            FocusHotkeyVirtualKeyCode = 0x71
+        });
 
         var state = new AppState
         {
             ActiveProfileName = null,
-            LastHotkeyConfig = customConfig
+            SessionSnapshot = snapshot
         };
 
         await _service.SaveAsync(state);
         var loaded = await _service.LoadAsync();
 
         Assert.NotNull(loaded);
-        Assert.NotNull(loaded.LastHotkeyConfig);
-        Assert.Equal("Ctrl+Space", loaded.LastHotkeyConfig.NextWindow.DisplayName);
-        Assert.Equal(0x20u, loaded.LastHotkeyConfig.NextWindow.VirtualKeyCode);
-        Assert.Equal("Ctrl", loaded.LastHotkeyConfig.BroadcastKey.DisplayName);
-        Assert.Equal(0xA2u, loaded.LastHotkeyConfig.BroadcastKey.VirtualKeyCode);
+        Assert.NotNull(loaded.SessionSnapshot);
+        Assert.Equal(2, loaded.SessionSnapshot.Slots.Count);
+        Assert.Equal("Cuckoolo", loaded.SessionSnapshot.Slots[0].CharacterName);
+        Assert.True(loaded.SessionSnapshot.Slots[0].IsLeader);
+        Assert.Equal("Altchar", loaded.SessionSnapshot.Slots[1].CharacterName);
+        Assert.Equal("Ctrl+Space", loaded.SessionSnapshot.GlobalHotkeys.NextWindow.DisplayName);
+        Assert.Equal("Ctrl", loaded.SessionSnapshot.GlobalHotkeys.BroadcastKey.DisplayName);
     }
 
     [Fact]
@@ -137,13 +167,31 @@ public class AppStateServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task LoadAsync_SansLastHotkeyConfig_RetourneNull()
+    public async Task LoadAsync_BackwardCompat_LastHotkeyConfig()
     {
-        var state = new AppState { ActiveProfileName = "Team", LastHotkeyConfig = null };
+        // Ancien format avec LastHotkeyConfig, sans SessionSnapshot
+        var state = new AppState
+        {
+            ActiveProfileName = "Team",
+            LastHotkeyConfig = GlobalHotkeyConfig.CreateDefault(),
+            SessionSnapshot = null
+        };
         await _service.SaveAsync(state);
 
         var loaded = await _service.LoadAsync();
         Assert.NotNull(loaded);
-        Assert.Null(loaded.LastHotkeyConfig);
+        Assert.NotNull(loaded.LastHotkeyConfig);
+        Assert.Null(loaded.SessionSnapshot);
+    }
+
+    [Fact]
+    public async Task LoadAsync_SansSnapshot_RetourneNull()
+    {
+        var state = new AppState { ActiveProfileName = "Team", SessionSnapshot = null };
+        await _service.SaveAsync(state);
+
+        var loaded = await _service.LoadAsync();
+        Assert.NotNull(loaded);
+        Assert.Null(loaded.SessionSnapshot);
     }
 }
