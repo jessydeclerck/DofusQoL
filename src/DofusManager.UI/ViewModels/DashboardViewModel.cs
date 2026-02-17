@@ -745,8 +745,27 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 }
             }
 
+            // Si un profil est actif et de nouvelles fenêtres apparaissent, réappliquer le profil
+            // pour restaurer l'ordre des slots, le leader et les hotkeys custom
+            if (_activeProfileName is not null && HasNewWindows(e.Current))
+            {
+                var profile = _profileService.GetProfile(_activeProfileName);
+                if (profile is not null)
+                {
+                    ApplyProfile(profile);
+                    Logger.Information("Profil réappliqué après changement de fenêtres : {ProfileName}", _activeProfileName);
+                    return;
+                }
+            }
+
             SyncCharacters(e.Current);
         });
+    }
+
+    private bool HasNewWindows(IReadOnlyList<DofusWindow> current)
+    {
+        var existingHandles = Characters.Select(c => c.Handle).ToHashSet();
+        return current.Any(w => !existingHandles.Contains(w.Handle));
     }
 
     /// <summary>
