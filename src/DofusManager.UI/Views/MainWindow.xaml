@@ -95,6 +95,15 @@
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <Grid Margin="0,1">
+                                        <Grid.Style>
+                                            <Style TargetType="Grid">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsConnected}" Value="False">
+                                                        <Setter Property="Opacity" Value="0.4" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Grid.Style>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="50" />  <!-- Leader -->
                                             <ColumnDefinition Width="40" />  <!-- Icône classe -->

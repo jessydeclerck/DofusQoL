@@ -13,8 +13,11 @@ public class AppState
     public string? ActiveProfileName { get; set; }
 
     /// <summary>
-    /// Snapshot de la configuration de la dernière session (raccourcis globaux, touche broadcast).
-    /// Utilisé quand aucun profil n'est actif, pour ne rien perdre entre 2 lancements.
+    /// Snapshot complet de la dernière session (slots, raccourcis globaux, touche broadcast).
+    /// Capture l'état exact incluant les modifications utilisateur (ordre, leader, hotkeys).
     /// </summary>
+    public Profile? SessionSnapshot { get; set; }
+
+    // Backward compat : ignoré au chargement si SessionSnapshot est présent
     public GlobalHotkeyConfig? LastHotkeyConfig { get; set; }
 }

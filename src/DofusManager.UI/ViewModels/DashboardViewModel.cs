@@ -196,60 +196,60 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     private async Task RestoreSessionStateAsync(AppState appState)
     {
-        if (appState.ActiveProfileName is not null)
+        // Restaurer le snapshot de session (inclut ordre slots, leader, hotkeys)
+        var snapshot = appState.SessionSnapshot;
+        if (snapshot is not null)
         {
-            // Un profil était actif — tenter de le charger
-            var profile = _profileService.GetProfile(appState.ActiveProfileName);
-            if (profile is not null)
-            {
-                var detectedWindows = _detectionService.DetectedWindows;
-                if (detectedWindows.Count > 0)
-                {
-                    ApplyProfile(profile);
-                    _activeProfileName = profile.ProfileName;
-                    SelectedProfile = Profiles.FirstOrDefault(p => p.ProfileName == profile.ProfileName);
-                    StatusText = $"Profil '{profile.ProfileName}' restauré";
-                    Logger.Information("Profil restauré au démarrage : {ProfileName}", profile.ProfileName);
-                }
-                else
-                {
-                    // Les fenêtres ne sont pas encore détectées — appliquer la config hotkeys immédiatement,
-                    // le profil sera appliqué dès la première détection
-                    _pendingProfileName = profile.ProfileName;
-                    InitializeGlobalHotkeys(profile.GlobalHotkeys);
-                    InitializeBroadcastKey(profile.GlobalHotkeys.BroadcastKey);
-                    if (HotkeysActive) RegisterAllHotkeys();
-                    SelectedProfile = Profiles.FirstOrDefault(p => p.ProfileName == profile.ProfileName);
-                    StatusText = $"Profil '{profile.ProfileName}' en attente de fenêtres...";
-                    Logger.Information("Profil en attente de fenêtres : {ProfileName}", profile.ProfileName);
-                }
-            }
-            else
-            {
-                // Le profil n'existe plus — appliquer la config sauvegardée si disponible
-                RestoreHotkeyConfig(appState);
-            }
-        }
-        else
-        {
-            // Pas de profil actif — restaurer la config de raccourcis sauvegardée
-            RestoreHotkeyConfig(appState);
-        }
-    }
+            _sessionSnapshot = snapshot;
 
-    private void RestoreHotkeyConfig(AppState appState)
-    {
-        if (appState.LastHotkeyConfig is not null)
+            // Appliquer immédiatement les hotkeys depuis le snapshot
+            InitializeGlobalHotkeys(snapshot.GlobalHotkeys);
+            InitializeBroadcastKey(snapshot.GlobalHotkeys.BroadcastKey);
+            if (HotkeysActive) RegisterAllHotkeys();
+        }
+        else if (appState.LastHotkeyConfig is not null)
         {
+            // Backward compat : ancien format sans snapshot
             InitializeGlobalHotkeys(appState.LastHotkeyConfig);
             InitializeBroadcastKey(appState.LastHotkeyConfig.BroadcastKey);
             if (HotkeysActive) RegisterAllHotkeys();
-            StatusText = "Configuration restaurée";
-            Logger.Information("Configuration hotkeys restaurée depuis la dernière session");
+        }
+
+        if (appState.ActiveProfileName is not null)
+        {
+            var profile = _profileService.GetProfile(appState.ActiveProfileName);
+            if (profile is not null)
+            {
+                _pendingProfileName = profile.ProfileName;
+                SelectedProfile = Profiles.FirstOrDefault(p => p.ProfileName == profile.ProfileName);
+
+                // Afficher immédiatement les personnages déconnectés (grisés)
+                var source = snapshot ?? profile;
+                ApplyProfile(source);
+                var connected = Characters.Count(c => c.IsConnected);
+                StatusText = connected > 0
+                    ? $"Profil '{profile.ProfileName}' restauré ({connected}/{Characters.Count} connectés)"
+                    : $"Profil '{profile.ProfileName}' — en attente de fenêtres ({Characters.Count} personnages)";
+                Logger.Information("Profil restauré au démarrage : {ProfileName}", profile.ProfileName);
+            }
+            else
+            {
+                StatusText = snapshot is not null ? "Configuration restaurée" : $"{Profiles.Count} profil(s) chargé(s)";
+            }
         }
         else
         {
-            StatusText = $"{Profiles.Count} profil(s) chargé(s)";
+            // Pas de profil — appliquer le snapshot si des fenêtres sont déjà détectées
+            if (snapshot is not null && _detectionService.DetectedWindows.Count > 0)
+            {
+                ApplyProfile(snapshot);
+                StatusText = "Configuration restaurée";
+            }
+            else
+            {
+                StatusText = snapshot is not null ? "Configuration restaurée" : $"{Profiles.Count} profil(s) chargé(s)";
+            }
+            Logger.Information("Configuration restaurée depuis la dernière session");
         }
     }
 
@@ -261,11 +261,15 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     {
         try
         {
-            var config = SnapshotGlobalHotkeyConfig();
+            // Toujours sauvegarder un snapshot frais de l'état actuel
+            var snapshot = Characters.Any(c => c.IsConnected)
+                ? SnapshotCurrentProfile("__session__")
+                : _sessionSnapshot; // garder le dernier snapshot connu si plus de fenêtres connectées
+
             var state = new AppState
             {
                 ActiveProfileName = _activeProfileName,
-                LastHotkeyConfig = config
+                SessionSnapshot = snapshot
             };
             await _appStateService.SaveAsync(state);
         }
@@ -273,30 +277,6 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         {
             Logger.Error(ex, "Erreur lors de la sauvegarde de l'état de session");
         }
-    }
-
-    private GlobalHotkeyConfig SnapshotGlobalHotkeyConfig()
-    {
-        var config = GlobalHotkeyConfig.CreateDefault();
-
-        if (GlobalHotkeys.Count == 4)
-        {
-            config = new GlobalHotkeyConfig
-            {
-                NextWindow = ToBindingConfig(GlobalHotkeys[0]),
-                PreviousWindow = ToBindingConfig(GlobalHotkeys[1]),
-                LastWindow = ToBindingConfig(GlobalHotkeys[2]),
-                FocusLeader = ToBindingConfig(GlobalHotkeys[3]),
-                BroadcastKey = new HotkeyBindingConfig
-                {
-                    DisplayName = BroadcastKeyDisplay,
-                    Modifiers = 0,
-                    VirtualKeyCode = BroadcastKeyVirtualKeyCode
-                }
-            };
-        }
-
-        return config;
     }
 
     // ===== POLLING =====
@@ -362,11 +342,11 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
         _hotkeyService.UnregisterAll();
 
-        // Slot hotkeys
+        // Slot hotkeys (uniquement les connectés)
         for (var i = 0; i < Characters.Count; i++)
         {
             var row = Characters[i];
-            if (row.VirtualKeyCode == 0) continue;
+            if (!row.IsConnected || row.VirtualKeyCode == 0) continue;
 
             _hotkeyService.Register(new HotkeyBinding
             {
@@ -747,36 +727,42 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Détermine quel profil/snapshot réappliquer (profil actif, pending, ou snapshot de session).
+    /// Détermine quel profil/snapshot réappliquer.
+    /// Le snapshot de session a priorité sur le profil disque (il capture les modifs utilisateur).
     /// </summary>
     private Profile? ResolveProfileToApply()
     {
-        // Profil en attente (démarrage)
-        if (_pendingProfileName is not null)
-        {
-            var profile = _profileService.GetProfile(_pendingProfileName);
-            if (profile is not null) return profile;
-        }
+        // Profil en attente (démarrage, pas encore de snapshot)
+        if (_pendingProfileName is not null && _sessionSnapshot is null)
+            return _profileService.GetProfile(_pendingProfileName);
 
-        // Profil actif
+        // Session snapshot (capture les modifs : ordre, leader, hotkeys)
+        if (_sessionSnapshot is not null)
+            return _sessionSnapshot;
+
+        // Profil actif sur disque (fallback si pas de snapshot)
         if (_activeProfileName is not null)
             return _profileService.GetProfile(_activeProfileName);
 
-        // Snapshot de session (modifications sans profil)
-        return _sessionSnapshot;
+        return null;
     }
 
     /// <summary>
-    /// Tente d'appliquer un profil. Ne le fait que si au moins une fenêtre matche.
-    /// Retourne true si le profil a été appliqué, false sinon (fallback vers SyncCharacters).
+    /// Tente d'appliquer un profil. Pour un profil actif/pending, applique toujours (affiche les
+    /// personnages déconnectés en grisé). Pour un snapshot de session, n'applique que si au moins
+    /// un pattern matche.
     /// </summary>
     private bool TryApplyProfile(Profile profile, IReadOnlyList<DofusWindow> currentWindows)
     {
-        // Vérifier qu'au moins une fenêtre matche un slot du profil
-        var anyMatch = profile.Slots.Any(slot =>
-            currentWindows.Any(w => GlobMatcher.IsMatch(slot.WindowTitlePattern, w.Title)));
+        var hasProfileOrPending = _activeProfileName is not null || _pendingProfileName is not null;
 
-        if (!anyMatch) return false;
+        if (!hasProfileOrPending)
+        {
+            // Snapshot de session — ne réappliquer que si au moins un pattern matche
+            var anyMatch = profile.Slots.Any(slot =>
+                currentWindows.Any(w => GlobMatcher.IsMatch(slot.WindowTitlePattern, w.Title)));
+            if (!anyMatch) return false;
+        }
 
         ApplyProfile(profile);
 
@@ -785,8 +771,11 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         {
             _activeProfileName = _pendingProfileName;
             _pendingProfileName = null;
-            StatusText = $"Profil '{_activeProfileName}' restauré";
-            Logger.Information("Profil restauré au démarrage : {ProfileName}", _activeProfileName);
+            var connected = Characters.Count(c => c.IsConnected);
+            var total = Characters.Count;
+            StatusText = $"Profil '{_activeProfileName}' restauré ({connected}/{total} connectés)";
+            Logger.Information("Profil restauré au démarrage : {ProfileName} ({Connected}/{Total})",
+                _activeProfileName, connected, total);
         }
         else if (_activeProfileName is not null)
         {
@@ -802,8 +791,11 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     private bool HasNewWindows(IReadOnlyList<DofusWindow> current)
     {
-        var existingHandles = Characters.Select(c => c.Handle).ToHashSet();
-        return current.Any(w => !existingHandles.Contains(w.Handle));
+        var connectedHandles = Characters
+            .Where(c => c.IsConnected)
+            .Select(c => c.Handle)
+            .ToHashSet();
+        return current.Any(w => !connectedHandles.Contains(w.Handle));
     }
 
     /// <summary>
@@ -812,13 +804,16 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     /// </summary>
     private void SyncCharacters(IReadOnlyList<DofusWindow> windows)
     {
-        var existingHandles = Characters.Select(c => c.Handle).ToHashSet();
+        var existingHandles = Characters
+            .Where(c => c.IsConnected)
+            .Select(c => c.Handle)
+            .ToHashSet();
         var currentHandles = windows.Select(w => w.Handle).ToHashSet();
 
-        // Supprimer les disparues
+        // Supprimer les connectés qui ont disparu (ne pas toucher les déconnectés = placeholders profil)
         for (var i = Characters.Count - 1; i >= 0; i--)
         {
-            if (!currentHandles.Contains(Characters[i].Handle))
+            if (Characters[i].IsConnected && !currentHandles.Contains(Characters[i].Handle))
                 Characters.RemoveAt(i);
         }
 
@@ -853,18 +848,23 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         // Mettre à jour le FocusService
         _focusService.UpdateSlots(GetCurrentDofusWindows());
 
-        // Leader par défaut : le premier slot si aucun leader n'est défini
-        var leaderRow = Characters.FirstOrDefault(c => c.IsLeader);
-        if (leaderRow is null && Characters.Count > 0)
+        // Leader par défaut : le premier connecté si aucun leader n'est défini
+        var leaderRow = Characters.FirstOrDefault(c => c.IsLeader && c.IsConnected);
+        if (leaderRow is null)
         {
-            Characters[0].IsLeader = true;
-            leaderRow = Characters[0];
+            var firstConnected = Characters.FirstOrDefault(c => c.IsConnected);
+            if (firstConnected is not null)
+            {
+                firstConnected.IsLeader = true;
+                leaderRow = firstConnected;
+            }
         }
 
         if (leaderRow is not null)
             _focusService.SetLeader(leaderRow.Handle);
 
-        StatusText = $"{Characters.Count} fenêtre(s) Dofus détectée(s)";
+        var connectedCount = Characters.Count(c => c.IsConnected);
+        StatusText = $"{connectedCount} fenêtre(s) Dofus détectée(s)";
     }
 
     /// <summary>
@@ -1056,18 +1056,13 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         try
         {
             var detectedWindows = _detectionService.DetectedWindows;
-            var matchedRows = new List<CharacterRowViewModel>();
+            var allRows = new List<CharacterRowViewModel>();
+            var usedHandles = new HashSet<nint>();
             nint leaderHandle = 0;
 
             foreach (var slot in profile.Slots.OrderBy(s => s.Index))
             {
-                var match = detectedWindows.FirstOrDefault(w =>
-                    GlobMatcher.IsMatch(slot.WindowTitlePattern, w.Title) &&
-                    matchedRows.All(r => r.Handle != w.Handle));
-
-                if (match is null) continue;
-
-                // Déterminer le raccourci : d'abord les nouveaux champs, sinon fallback sur le défaut
+                // Déterminer le raccourci
                 uint modifiers = slot.FocusHotkeyModifiers;
                 uint vk = slot.FocusHotkeyVirtualKeyCode;
                 string display = slot.FocusHotkey ?? string.Empty;
@@ -1083,28 +1078,52 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                     }
                 }
 
-                matchedRows.Add(new CharacterRowViewModel(this)
-                {
-                    Handle = match.Handle,
-                    SlotIndex = matchedRows.Count,
-                    Title = match.Title,
-                    ProcessId = match.ProcessId,
-                    IsLeader = slot.IsLeader,
-                    HotkeyModifiers = modifiers,
-                    VirtualKeyCode = vk,
-                    HotkeyDisplay = display
-                });
+                var match = detectedWindows.FirstOrDefault(w =>
+                    GlobMatcher.IsMatch(slot.WindowTitlePattern, w.Title) &&
+                    !usedHandles.Contains(w.Handle));
 
-                if (slot.IsLeader)
-                    leaderHandle = match.Handle;
+                if (match is not null)
+                {
+                    // Connecté
+                    usedHandles.Add(match.Handle);
+                    allRows.Add(new CharacterRowViewModel(this)
+                    {
+                        Handle = match.Handle,
+                        SlotIndex = allRows.Count,
+                        Title = match.Title,
+                        ProcessId = match.ProcessId,
+                        IsLeader = slot.IsLeader,
+                        HotkeyModifiers = modifiers,
+                        VirtualKeyCode = vk,
+                        HotkeyDisplay = display
+                    });
+
+                    if (slot.IsLeader)
+                        leaderHandle = match.Handle;
+                }
+                else
+                {
+                    // Déconnecté — placeholder grisé
+                    allRows.Add(new CharacterRowViewModel(this)
+                    {
+                        Handle = 0,
+                        SlotIndex = allRows.Count,
+                        Title = slot.CharacterName,
+                        ProcessId = 0,
+                        IsLeader = slot.IsLeader,
+                        HotkeyModifiers = modifiers,
+                        VirtualKeyCode = vk,
+                        HotkeyDisplay = display
+                    });
+                }
             }
 
             // Remplacer la liste des personnages
             Characters.Clear();
-            foreach (var row in matchedRows)
+            foreach (var row in allRows)
                 Characters.Add(row);
 
-            // Mettre à jour FocusService
+            // Mettre à jour FocusService (uniquement les connectés)
             _focusService.UpdateSlots(GetCurrentDofusWindows());
             if (leaderHandle != 0)
                 _focusService.SetLeader(leaderHandle);
@@ -1149,8 +1168,17 @@ public partial class CharacterRowViewModel : ObservableObject
 
     public CharacterRowViewModel(DashboardViewModel parent) => _parent = parent;
 
-    public nint Handle { get; init; }
-    public int ProcessId { get; init; }
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsConnected))]
+    private nint _handle;
+
+    [ObservableProperty]
+    private int _processId;
+
+    /// <summary>
+    /// True si une fenêtre Dofus est associée à ce slot, false si le personnage est attendu mais déconnecté.
+    /// </summary>
+    public bool IsConnected => Handle != 0;
 
     [ObservableProperty]
     private int _slotIndex;
