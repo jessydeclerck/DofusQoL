@@ -11,6 +11,10 @@ obj/
 # Logs
 logs/
 
+# Claude Code
+.claude/
+CLAUDE.md
+
 # OS
 Thumbs.db
 Desktop.ini
