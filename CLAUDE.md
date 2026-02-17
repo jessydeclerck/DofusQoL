@@ -24,7 +24,7 @@ Mets à jour le suivi après chaque tâche complétée.
 
 ## Itérations
 Le projet se construit itérativement (8 itérations). Chaque itération produit un incrément fonctionnel testable.
-État actuel : **Itération 3 terminée** — Profils (F3)
+État actuel : **Itération 4 terminée** — Broadcast d'input (F4)
 
 ## Conventions de code
 - Noms de classes/méthodes en anglais, commentaires en français OK

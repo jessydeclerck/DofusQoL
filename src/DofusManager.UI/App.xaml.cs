@@ -41,10 +41,13 @@ public partial class App : Application
         services.AddSingleton<IHotkeyService, HotkeyService>();
         services.AddSingleton<IFocusService, FocusService>();
         services.AddSingleton<IProfileService, ProfileService>();
+        services.AddSingleton<IBroadcastService, BroadcastService>();
+        services.AddSingleton<IPushToBroadcastService, PushToBroadcastService>();
 
         // ViewModels (Singleton pour éviter les doubles abonnements aux événements)
         services.AddSingleton<HotkeyViewModel>();
         services.AddSingleton<ProfileViewModel>();
+        services.AddSingleton<BroadcastViewModel>();
         services.AddSingleton<MainViewModel>();
 
         // Views

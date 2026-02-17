@@ -62,7 +62,8 @@ public class HotkeyBindingTests
         Assert.Contains(HotkeyAction.PreviousWindow, values);
         Assert.Contains(HotkeyAction.LastWindow, values);
         Assert.Contains(HotkeyAction.PanicLeader, values);
-        Assert.Equal(5, values.Length);
+        Assert.Contains(HotkeyAction.Broadcast, values);
+        Assert.Equal(6, values.Length);
     }
 
     [Fact]

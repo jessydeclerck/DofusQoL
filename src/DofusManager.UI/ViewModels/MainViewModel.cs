@@ -17,6 +17,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public HotkeyViewModel HotkeyViewModel { get; }
     public ProfileViewModel ProfileViewModel { get; }
+    public BroadcastViewModel BroadcastViewModel { get; }
 
     public ObservableCollection<DofusWindow> Windows { get; } = [];
 
@@ -29,12 +30,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public string PollingButtonText => IsPolling ? "Arrêter le polling" : "Démarrer le polling";
 
-    public MainViewModel(IWindowDetectionService detectionService, HotkeyViewModel hotkeyViewModel, ProfileViewModel profileViewModel)
+    public MainViewModel(IWindowDetectionService detectionService, HotkeyViewModel hotkeyViewModel, ProfileViewModel profileViewModel, BroadcastViewModel broadcastViewModel)
     {
         _detectionService = detectionService;
         _dispatcher = Dispatcher.CurrentDispatcher;
         HotkeyViewModel = hotkeyViewModel;
         ProfileViewModel = profileViewModel;
+        BroadcastViewModel = broadcastViewModel;
 
         _detectionService.WindowsChanged += OnWindowsChanged;
 
@@ -42,6 +44,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _detectionService.StartPolling();
         IsPolling = true;
         StatusText = "Polling actif (500ms)";
+
+        // Push-to-Broadcast actif par défaut
+        BroadcastViewModel.TogglePushToBroadcast();
     }
 
     [RelayCommand]

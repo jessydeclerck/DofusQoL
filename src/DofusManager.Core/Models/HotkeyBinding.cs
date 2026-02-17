@@ -18,7 +18,10 @@ public enum HotkeyAction
     LastWindow,
 
     /// <summary>Focus la fenêtre du leader.</summary>
-    PanicLeader
+    PanicLeader,
+
+    /// <summary>Déclenche un broadcast d'input.</summary>
+    Broadcast
 }
 
 /// <summary>

@@ -82,6 +82,7 @@ public class BroadcastPresetTests
         Assert.Null(preset.Key);
         Assert.Null(preset.ClickX);
         Assert.Null(preset.ClickY);
+        Assert.Null(preset.CustomTargetSlotIndices);
     }
 
     [Fact]
@@ -99,6 +100,140 @@ public class BroadcastPresetTests
         Assert.Equal(450, preset.ClickX);
         Assert.Equal(620, preset.ClickY);
         Assert.Equal("clickAtPosition", preset.InputType);
+    }
+
+    // --- Validation ---
+
+    [Fact]
+    public void Validate_ValidKeyPreset_ReturnsNull()
+    {
+        var preset = new BroadcastPreset { Name = "Test", InputType = "key", Key = "Enter" };
+        Assert.Null(preset.Validate());
+    }
+
+    [Fact]
+    public void Validate_ValidClickPreset_ReturnsNull()
+    {
+        var preset = new BroadcastPreset
+        {
+            Name = "Test",
+            InputType = "clickAtPosition",
+            ClickX = 100,
+            ClickY = 200
+        };
+        Assert.Null(preset.Validate());
+    }
+
+    [Fact]
+    public void Validate_EmptyName_ReturnsError()
+    {
+        var preset = new BroadcastPreset { Name = "", InputType = "key", Key = "Enter" };
+        Assert.NotNull(preset.Validate());
+        Assert.Contains("nom", preset.Validate()!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Validate_InvalidInputType_ReturnsError()
+    {
+        var preset = new BroadcastPreset { Name = "Test", InputType = "invalid" };
+        var error = preset.Validate();
+        Assert.NotNull(error);
+        Assert.Contains("InputType invalide", error);
+    }
+
+    [Fact]
+    public void Validate_KeyTypeWithoutKey_ReturnsError()
+    {
+        var preset = new BroadcastPreset { Name = "Test", InputType = "key" };
+        Assert.NotNull(preset.Validate());
+    }
+
+    [Fact]
+    public void Validate_ClickWithoutCoordinates_ReturnsError()
+    {
+        var preset = new BroadcastPreset { Name = "Test", InputType = "clickAtPosition" };
+        Assert.NotNull(preset.Validate());
+    }
+
+    [Fact]
+    public void Validate_DelayMinGreaterThanMax_ReturnsError()
+    {
+        var preset = new BroadcastPreset
+        {
+            Name = "Test",
+            InputType = "key",
+            Key = "Enter",
+            DelayMin = 300,
+            DelayMax = 80
+        };
+        Assert.NotNull(preset.Validate());
+    }
+
+    [Fact]
+    public void Validate_NegativeDelayMin_ReturnsError()
+    {
+        var preset = new BroadcastPreset
+        {
+            Name = "Test",
+            InputType = "key",
+            Key = "Enter",
+            DelayMin = -1
+        };
+        Assert.NotNull(preset.Validate());
+    }
+
+    [Fact]
+    public void Validate_CustomTargetsWithoutIndices_ReturnsError()
+    {
+        var preset = new BroadcastPreset
+        {
+            Name = "Test",
+            InputType = "key",
+            Key = "Enter",
+            Targets = "custom"
+        };
+        Assert.NotNull(preset.Validate());
+    }
+
+    [Fact]
+    public void Validate_CustomTargetsWithIndices_ReturnsNull()
+    {
+        var preset = new BroadcastPreset
+        {
+            Name = "Test",
+            InputType = "key",
+            Key = "Enter",
+            Targets = "custom",
+            CustomTargetSlotIndices = [0, 1]
+        };
+        Assert.Null(preset.Validate());
+    }
+
+    [Fact]
+    public void Validate_InvalidClickButton_ReturnsError()
+    {
+        var preset = new BroadcastPreset
+        {
+            Name = "Test",
+            InputType = "clickAtPosition",
+            ClickX = 10,
+            ClickY = 20,
+            ClickButton = "middle"
+        };
+        Assert.NotNull(preset.Validate());
+    }
+
+    [Fact]
+    public void Validate_InvalidOrderMode_ReturnsError()
+    {
+        var preset = new BroadcastPreset
+        {
+            Name = "Test",
+            InputType = "key",
+            Key = "Enter",
+            OrderMode = "invalid"
+        };
+        Assert.NotNull(preset.Validate());
     }
 }
 

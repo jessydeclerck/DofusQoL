@@ -192,6 +192,7 @@ public partial class HotkeyViewModel : ObservableObject, IDisposable
             DisplayName = "Ctrl+F1",
             Action = HotkeyAction.PanicLeader
         });
+
     }
 
     private void OnHotkeyPressed(object? sender, HotkeyPressedEventArgs e)

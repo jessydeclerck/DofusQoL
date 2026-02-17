@@ -86,7 +86,7 @@ public class WindowHelper : IWin32WindowHelper
         return "Unknown";
     }
 
-    public bool FocusWindow(nint handle)
+    public unsafe bool FocusWindow(nint handle)
     {
         var hWnd = new HWND(handle);
 
@@ -96,6 +96,21 @@ public class WindowHelper : IWin32WindowHelper
             {
                 PInvoke.ShowWindow(hWnd, SHOW_WINDOW_CMD.SW_RESTORE);
             }
+
+            // ALT-key trick : envoyer un ALT down+up synthétique via SendInput
+            // pour satisfaire la condition "le process appelant a reçu le dernier input"
+            // qui est requise par SetForegroundWindow. Sans ça, SetForegroundWindow
+            // échoue silencieusement depuis un thread pool (Task.Run).
+            var inputs = new Windows.Win32.UI.Input.KeyboardAndMouse.INPUT[2];
+            inputs[0].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_KEYBOARD;
+            inputs[0].Anonymous.ki.wVk = (Windows.Win32.UI.Input.KeyboardAndMouse.VIRTUAL_KEY)0x12; // VK_MENU (ALT)
+            inputs[0].Anonymous.ki.dwFlags = 0; // key down
+
+            inputs[1].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_KEYBOARD;
+            inputs[1].Anonymous.ki.wVk = (Windows.Win32.UI.Input.KeyboardAndMouse.VIRTUAL_KEY)0x12;
+            inputs[1].Anonymous.ki.dwFlags = Windows.Win32.UI.Input.KeyboardAndMouse.KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+
+            PInvoke.SendInput(inputs.AsSpan(), sizeof(Windows.Win32.UI.Input.KeyboardAndMouse.INPUT));
 
             var result = PInvoke.SetForegroundWindow(hWnd);
             Logger.Debug("FocusWindow {Handle} → SetForegroundWindow={Result}", handle, result);
@@ -141,5 +156,125 @@ public class WindowHelper : IWin32WindowHelper
         {
             Logger.Warning("Échec UnregisterHotKey id={Id}", id);
         }
+    }
+
+    public bool PostMessage(nint handle, uint msg, nint wParam, nint lParam)
+    {
+        try
+        {
+            var result = PInvoke.PostMessage(new HWND(handle), msg, (WPARAM)(nuint)wParam, (LPARAM)lParam);
+            Logger.Debug("PostMessage handle={Handle} msg=0x{Msg:X4} → {Result}", handle, msg, result);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning(ex, "Erreur PostMessage handle={Handle} msg=0x{Msg:X4}", handle, msg);
+            return false;
+        }
+    }
+
+    public (int Width, int Height)? GetClientRect(nint handle)
+    {
+        try
+        {
+            if (PInvoke.GetClientRect(new HWND(handle), out var rect))
+            {
+                return (rect.Width, rect.Height);
+            }
+
+            Logger.Warning("GetClientRect échoué pour handle={Handle}", handle);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning(ex, "Erreur GetClientRect handle={Handle}", handle);
+            return null;
+        }
+    }
+
+    public (int ClientX, int ClientY)? ScreenToClient(nint handle, int screenX, int screenY)
+    {
+        try
+        {
+            var point = new System.Drawing.Point(screenX, screenY);
+            if (PInvoke.ScreenToClient(new HWND(handle), ref point))
+            {
+                return (point.X, point.Y);
+            }
+
+            Logger.Warning("ScreenToClient échoué pour handle={Handle}", handle);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning(ex, "Erreur ScreenToClient handle={Handle}", handle);
+            return null;
+        }
+    }
+
+    public nint GetForegroundWindow()
+    {
+        return PInvoke.GetForegroundWindow().Value;
+    }
+
+    public bool IsKeyDown(int virtualKeyCode)
+    {
+        // GetAsyncKeyState retourne un short : bit de poids fort (0x8000) = touche enfoncée
+        var state = PInvoke.GetAsyncKeyState(virtualKeyCode);
+        return (state & 0x8000) != 0;
+    }
+
+    public (int ScreenX, int ScreenY)? ClientToScreen(nint handle, int clientX, int clientY)
+    {
+        try
+        {
+            var point = new System.Drawing.Point(clientX, clientY);
+            if (PInvoke.ClientToScreen(new HWND(handle), ref point))
+            {
+                return (point.X, point.Y);
+            }
+
+            Logger.Warning("ClientToScreen échoué pour handle={Handle}", handle);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning(ex, "Erreur ClientToScreen handle={Handle}", handle);
+            return null;
+        }
+    }
+
+    public bool SetCursorPos(int x, int y)
+    {
+        return PInvoke.SetCursorPos(x, y);
+    }
+
+    public (int X, int Y)? GetCursorPos()
+    {
+        if (PInvoke.GetCursorPos(out var point))
+        {
+            return (point.X, point.Y);
+        }
+        return null;
+    }
+
+    public unsafe bool SendMouseClick()
+    {
+        var down = new Windows.Win32.UI.Input.KeyboardAndMouse.INPUT[1];
+        down[0].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_MOUSE;
+        down[0].Anonymous.mi.dwFlags = Windows.Win32.UI.Input.KeyboardAndMouse.MOUSE_EVENT_FLAGS.MOUSEEVENTF_LEFTDOWN;
+
+        var sentDown = PInvoke.SendInput(down.AsSpan(), sizeof(Windows.Win32.UI.Input.KeyboardAndMouse.INPUT));
+
+        // Délai aléatoire entre down et up pour simuler un clic humain (40-90ms)
+        Thread.Sleep(Random.Shared.Next(40, 91));
+
+        var up = new Windows.Win32.UI.Input.KeyboardAndMouse.INPUT[1];
+        up[0].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_MOUSE;
+        up[0].Anonymous.mi.dwFlags = Windows.Win32.UI.Input.KeyboardAndMouse.MOUSE_EVENT_FLAGS.MOUSEEVENTF_LEFTUP;
+
+        var sentUp = PInvoke.SendInput(up.AsSpan(), sizeof(Windows.Win32.UI.Input.KeyboardAndMouse.INPUT));
+
+        return sentDown == 1 && sentUp == 1;
     }
 }
