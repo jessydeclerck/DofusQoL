@@ -16,6 +16,7 @@ public class GlobalHotkeyConfigTests
         Assert.NotNull(config.PreviousWindow);
         Assert.NotNull(config.LastWindow);
         Assert.NotNull(config.FocusLeader);
+        Assert.NotNull(config.BroadcastKey);
     }
 
     [Fact]
@@ -59,12 +60,24 @@ public class GlobalHotkeyConfigTests
     }
 
     [Fact]
+    public void CreateDefault_BroadcastKey_IsAlt()
+    {
+        var config = GlobalHotkeyConfig.CreateDefault();
+
+        Assert.Equal("Alt", config.BroadcastKey.DisplayName);
+        Assert.Equal(0u, config.BroadcastKey.Modifiers);
+        Assert.Equal(0x12u, config.BroadcastKey.VirtualKeyCode); // VK_MENU
+    }
+
+    [Fact]
     public void JsonRoundTrip_PreservesAllValues()
     {
         var original = GlobalHotkeyConfig.CreateDefault();
         original.NextWindow.DisplayName = "Alt+N";
         original.NextWindow.Modifiers = (uint)HotkeyModifiers.Alt;
         original.NextWindow.VirtualKeyCode = 0x4E; // VK_N
+        original.BroadcastKey.DisplayName = "F9";
+        original.BroadcastKey.VirtualKeyCode = 0x78; // VK_F9
 
         var json = JsonSerializer.Serialize(original);
         var deserialized = JsonSerializer.Deserialize<GlobalHotkeyConfig>(json);
@@ -77,6 +90,9 @@ public class GlobalHotkeyConfigTests
         Assert.Equal("Ctrl+Shift+Tab", deserialized.PreviousWindow.DisplayName);
         Assert.Equal("Ctrl+`", deserialized.LastWindow.DisplayName);
         Assert.Equal("Ctrl+F1", deserialized.FocusLeader.DisplayName);
+        // Broadcast key preserved
+        Assert.Equal("F9", deserialized.BroadcastKey.DisplayName);
+        Assert.Equal(0x78u, deserialized.BroadcastKey.VirtualKeyCode);
     }
 
     [Fact]
@@ -100,5 +116,28 @@ public class GlobalHotkeyConfigTests
         Assert.NotNull(profile.GlobalHotkeys);
         // Les valeurs par défaut du constructeur sont appliquées
         Assert.Equal("Ctrl+Tab", profile.GlobalHotkeys.NextWindow.DisplayName);
+        Assert.Equal("Alt", profile.GlobalHotkeys.BroadcastKey.DisplayName);
+        Assert.Equal(0x12u, profile.GlobalHotkeys.BroadcastKey.VirtualKeyCode);
+    }
+
+    [Fact]
+    public void JsonDeserialization_GlobalHotkeys_WithoutBroadcastKey_DefaultsToAlt()
+    {
+        // Simule un profil avec GlobalHotkeys mais sans BroadcastKey (profils pré-configurable)
+        var json = """
+        {
+            "NextWindow": {"DisplayName":"Ctrl+Tab","Modifiers":2,"VirtualKeyCode":9},
+            "PreviousWindow": {"DisplayName":"Ctrl+Shift+Tab","Modifiers":6,"VirtualKeyCode":9},
+            "LastWindow": {"DisplayName":"Ctrl+`","Modifiers":2,"VirtualKeyCode":192},
+            "FocusLeader": {"DisplayName":"Ctrl+F1","Modifiers":2,"VirtualKeyCode":112}
+        }
+        """;
+        var config = JsonSerializer.Deserialize<GlobalHotkeyConfig>(json);
+
+        Assert.NotNull(config);
+        Assert.NotNull(config.BroadcastKey);
+        // BroadcastKey utilise l'initialisation par défaut de la propriété (Alt)
+        Assert.Equal("Alt", config.BroadcastKey.DisplayName);
+        Assert.Equal(0x12u, config.BroadcastKey.VirtualKeyCode);
     }
 }

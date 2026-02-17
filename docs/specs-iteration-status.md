@@ -88,6 +88,12 @@
 - [x] Suppression fichiers : HotkeyView, ProfileView, BroadcastView, MainViewModel, HotkeyViewModel, ProfileViewModel, BroadcastViewModel
 - [x] Backward compat JSON : profils legacy sans nouveaux champs chargent correctement (defaults)
 - [x] Tests unitaires (24 nouveaux : GlobalHotkeyConfigTests 8 + HotkeyDefaultsTests 14 + ProfileServiceTests 2) — total 206
+- [x] Touche broadcast configurable (remplace Alt codé en dur)
+  - GlobalHotkeyConfig.BroadcastKey (défaut Alt, persisté dans profils)
+  - HotkeyCaptureBox.SingleKeyMode (capture touches modificatrices seules)
+  - DashboardViewModel : polling dynamique selon la touche configurée
+  - Backward compat : profils legacy sans BroadcastKey → défaut Alt
+  - Tests unitaires (+2 : CreateDefault_BroadcastKey_IsAlt, JsonDeserialization_WithoutBroadcastKey) — total 208
 
 ## Itération 5 — Session manager (F5)
 - À planifier
