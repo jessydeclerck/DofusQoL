@@ -26,8 +26,9 @@ public class PushToBroadcastService : IPushToBroadcastService
     private const int InitialDelayMs = 50;
     // Délai après FocusWindow pour laisser Windows changer le foreground
     private const int FocusDelayMs = 100;
-    // Délai après SendMouseClick pour laisser le clic être traité
-    private const int ClickDelayMs = 50;
+    // Délai aléatoire après chaque clic pour simuler un comportement humain
+    private const int ClickDelayMinMs = 40;
+    private const int ClickDelayMaxMs = 90;
 
     private IReadOnlyList<DofusWindow> _dofusWindows = [];
     private UnhookWindowsHookExSafeHandle? _hookHandle;
@@ -203,7 +204,8 @@ public class PushToBroadcastService : IPushToBroadcastService
             var clicked = _windowHelper.SendMouseClick();
             Logger.Information("[BROADCAST-TARGET #{Index}] SendMouseClick → {Result}", windowIndex, clicked);
 
-            Thread.Sleep(ClickDelayMs);
+            // Délai aléatoire entre les fenêtres pour simuler un comportement humain
+            Thread.Sleep(Random.Shared.Next(ClickDelayMinMs, ClickDelayMaxMs + 1));
 
             if (clicked) reached++;
         }

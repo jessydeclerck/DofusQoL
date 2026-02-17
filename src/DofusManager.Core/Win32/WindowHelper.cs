@@ -260,21 +260,16 @@ public class WindowHelper : IWin32WindowHelper
 
     public unsafe bool SendMouseClick()
     {
-        var down = new Windows.Win32.UI.Input.KeyboardAndMouse.INPUT[1];
-        down[0].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_MOUSE;
-        down[0].Anonymous.mi.dwFlags = Windows.Win32.UI.Input.KeyboardAndMouse.MOUSE_EVENT_FLAGS.MOUSEEVENTF_LEFTDOWN;
+        var inputs = new Windows.Win32.UI.Input.KeyboardAndMouse.INPUT[2];
 
-        var sentDown = PInvoke.SendInput(down.AsSpan(), sizeof(Windows.Win32.UI.Input.KeyboardAndMouse.INPUT));
+        // Mouse down + up en un seul SendInput atomique
+        inputs[0].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_MOUSE;
+        inputs[0].Anonymous.mi.dwFlags = Windows.Win32.UI.Input.KeyboardAndMouse.MOUSE_EVENT_FLAGS.MOUSEEVENTF_LEFTDOWN;
 
-        // Délai aléatoire entre down et up pour simuler un clic humain (40-90ms)
-        Thread.Sleep(Random.Shared.Next(40, 91));
+        inputs[1].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_MOUSE;
+        inputs[1].Anonymous.mi.dwFlags = Windows.Win32.UI.Input.KeyboardAndMouse.MOUSE_EVENT_FLAGS.MOUSEEVENTF_LEFTUP;
 
-        var up = new Windows.Win32.UI.Input.KeyboardAndMouse.INPUT[1];
-        up[0].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_MOUSE;
-        up[0].Anonymous.mi.dwFlags = Windows.Win32.UI.Input.KeyboardAndMouse.MOUSE_EVENT_FLAGS.MOUSEEVENTF_LEFTUP;
-
-        var sentUp = PInvoke.SendInput(up.AsSpan(), sizeof(Windows.Win32.UI.Input.KeyboardAndMouse.INPUT));
-
-        return sentDown == 1 && sentUp == 1;
+        var sent = PInvoke.SendInput(inputs.AsSpan(), sizeof(Windows.Win32.UI.Input.KeyboardAndMouse.INPUT));
+        return sent == 2;
     }
 }
