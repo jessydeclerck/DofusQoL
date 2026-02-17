@@ -843,7 +843,6 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         if (leaderRow is not null)
             _focusService.SetLeader(leaderRow.Handle);
 
-        UpdateSessionSnapshot();
         StatusText = $"{Characters.Count} fenêtre(s) Dofus détectée(s)";
     }
 
