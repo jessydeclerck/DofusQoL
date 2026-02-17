@@ -6,6 +6,7 @@ using DofusManager.Core.Helpers;
 using DofusManager.Core.Models;
 using DofusManager.Core.Services;
 using DofusManager.Core.Win32;
+using DofusManager.UI.Helpers;
 using Serilog;
 
 namespace DofusManager.UI.ViewModels;
@@ -933,6 +934,8 @@ public partial class CharacterRowViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DisplayName))]
+    [NotifyPropertyChangedFor(nameof(ClassName))]
+    [NotifyPropertyChangedFor(nameof(ClassIcon))]
     private string _title = string.Empty;
 
     /// <summary>
@@ -948,6 +951,17 @@ public partial class CharacterRowViewModel : ObservableObject
             return dashIndex > 0 ? Title[..dashIndex].Trim() : Title.Trim();
         }
     }
+
+    /// <summary>
+    /// Classe du personnage extraite du titre.
+    /// Ex: "Cuckoolo - Pandawa - 3.4.18.19 - Release" → "Pandawa"
+    /// </summary>
+    public string? ClassName => DofusClassHelper.ExtractClassName(Title);
+
+    /// <summary>
+    /// Icône de classe (portrait) correspondant au personnage.
+    /// </summary>
+    public System.Windows.Media.Imaging.BitmapImage? ClassIcon => DofusClassHelper.GetClassIcon(Title);
 
     [ObservableProperty]
     private bool _isLeader;
