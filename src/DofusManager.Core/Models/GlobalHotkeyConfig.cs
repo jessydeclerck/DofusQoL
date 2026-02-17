@@ -11,7 +11,7 @@ public class HotkeyBindingConfig
 }
 
 /// <summary>
-/// Configuration des 4 raccourcis globaux de navigation.
+/// Configuration des 4 raccourcis globaux de navigation + touche broadcast.
 /// </summary>
 public class GlobalHotkeyConfig
 {
@@ -20,7 +20,18 @@ public class GlobalHotkeyConfig
     public HotkeyBindingConfig LastWindow { get; set; } = new();
     public HotkeyBindingConfig FocusLeader { get; set; } = new();
 
+    /// <summary>
+    /// Touche à maintenir pour activer le broadcast de clics (défaut : Alt).
+    /// Seul VirtualKeyCode est utilisé (pas de modifiers — c'est une touche "hold").
+    /// </summary>
+    public HotkeyBindingConfig BroadcastKey { get; set; } = new()
+    {
+        DisplayName = "Alt",
+        VirtualKeyCode = VK_MENU
+    };
+
     private const uint VK_TAB = 0x09;
+    private const uint VK_MENU = 0x12;
     private const uint VK_OEM_3 = 0xC0; // touche ` (backtick)
     private const uint VK_F1 = 0x70;
 
@@ -49,6 +60,11 @@ public class GlobalHotkeyConfig
             DisplayName = "Ctrl+F1",
             Modifiers = (uint)HotkeyModifiers.Control,
             VirtualKeyCode = VK_F1
+        },
+        BroadcastKey = new HotkeyBindingConfig
+        {
+            DisplayName = "Alt",
+            VirtualKeyCode = VK_MENU
         }
     };
 }

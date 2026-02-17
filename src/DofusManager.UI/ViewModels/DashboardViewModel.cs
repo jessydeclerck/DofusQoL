@@ -34,7 +34,6 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     // Push-to-broadcast
     private DispatcherTimer? _altPollTimer;
-    private const int VK_MENU = 0x12;
     private bool _listeningMode;
 
     // --- Collections ---
@@ -70,8 +69,23 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(PushToBroadcastIndicator))]
     private bool _isListening;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PushToBroadcastIndicator))]
+    [NotifyPropertyChangedFor(nameof(BroadcastKeyHelpText))]
+    private uint _broadcastKeyVirtualKeyCode = 0x12; // VK_MENU (Alt)
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PushToBroadcastIndicator))]
+    [NotifyPropertyChangedFor(nameof(BroadcastKeyHelpText))]
+    private string _broadcastKeyDisplay = "Alt";
+
     public string PushToBroadcastButtonText => IsListening ? "Désactiver" : "Activer";
-    public string PushToBroadcastIndicator => IsArmed ? "Alt maintenu" : IsListening ? "En attente de Alt" : "Inactif";
+    public string PushToBroadcastIndicator => IsArmed
+        ? $"{BroadcastKeyDisplay} maintenu"
+        : IsListening
+            ? $"En attente de {BroadcastKeyDisplay}"
+            : "Inactif";
+    public string BroadcastKeyHelpText => $"Maintenez {BroadcastKeyDisplay} : chaque clic est broadcasté.";
 
     // --- Profils ---
 
@@ -118,8 +132,10 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         _profileService.ProfilesChanged += OnProfilesChanged;
         _pushToBroadcastService.BroadcastPerformed += OnBroadcastPerformed;
 
-        // Initialiser les 4 raccourcis globaux avec les valeurs par défaut
-        InitializeGlobalHotkeys(GlobalHotkeyConfig.CreateDefault());
+        // Initialiser les raccourcis globaux + touche broadcast avec les valeurs par défaut
+        var defaultConfig = GlobalHotkeyConfig.CreateDefault();
+        InitializeGlobalHotkeys(defaultConfig);
+        InitializeBroadcastKey(defaultConfig.BroadcastKey);
 
         // Polling actif par défaut
         _detectionService.StartPolling();
@@ -422,8 +438,10 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             }
         }
 
-        // Reset global hotkeys
-        InitializeGlobalHotkeys(GlobalHotkeyConfig.CreateDefault());
+        // Reset global hotkeys + broadcast key
+        var defaults = GlobalHotkeyConfig.CreateDefault();
+        InitializeGlobalHotkeys(defaults);
+        InitializeBroadcastKey(defaults.BroadcastKey);
 
         if (HotkeysActive) RegisterAllHotkeys();
         StatusText = "Raccourcis réinitialisés aux valeurs par défaut";
@@ -445,7 +463,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     {
         _listeningMode = true;
         IsListening = true;
-        StatusText = "Push-to-Broadcast actif — maintenez Alt pour broadcaster les clics";
+        StatusText = $"Push-to-Broadcast actif — maintenez {BroadcastKeyDisplay} pour broadcaster les clics";
 
         _altPollTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
         _altPollTimer.Tick += OnAltPollTimerTick;
@@ -471,9 +489,9 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     private void OnAltPollTimerTick(object? sender, EventArgs e)
     {
-        var altDown = _windowHelper.IsKeyDown(VK_MENU);
+        var keyDown = _windowHelper.IsKeyDown((int)BroadcastKeyVirtualKeyCode);
 
-        if (altDown && !IsArmed)
+        if (keyDown && !IsArmed)
         {
             var windows = _detectionService.DetectedWindows;
             if (windows.Count == 0) return;
@@ -482,11 +500,11 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             IsArmed = true;
             StatusText = $"Push-to-Broadcast ARMÉ ({windows.Count} fenêtres)";
         }
-        else if (!altDown && IsArmed)
+        else if (!keyDown && IsArmed)
         {
             _pushToBroadcastService.Disarm();
             IsArmed = false;
-            StatusText = "Push-to-Broadcast — en attente de Alt";
+            StatusText = $"Push-to-Broadcast — en attente de {BroadcastKeyDisplay}";
         }
     }
 
@@ -710,6 +728,21 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             SelectedProfile = Profiles.FirstOrDefault(p => p.ProfileName == selected);
     }
 
+    private void InitializeBroadcastKey(HotkeyBindingConfig config)
+    {
+        if (config.VirtualKeyCode != 0)
+        {
+            BroadcastKeyVirtualKeyCode = config.VirtualKeyCode;
+            BroadcastKeyDisplay = config.DisplayName;
+        }
+        else
+        {
+            // Fallback vers Alt si la config est vide (profil legacy)
+            BroadcastKeyVirtualKeyCode = 0x12;
+            BroadcastKeyDisplay = "Alt";
+        }
+    }
+
     private void InitializeGlobalHotkeys(GlobalHotkeyConfig config)
     {
         GlobalHotkeys.Clear();
@@ -773,7 +806,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             });
         }
 
-        // Sauvegarder les raccourcis globaux
+        // Sauvegarder les raccourcis globaux + touche broadcast
         if (GlobalHotkeys.Count == 4)
         {
             profile.GlobalHotkeys = new GlobalHotkeyConfig
@@ -781,7 +814,13 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 NextWindow = ToBindingConfig(GlobalHotkeys[0]),
                 PreviousWindow = ToBindingConfig(GlobalHotkeys[1]),
                 LastWindow = ToBindingConfig(GlobalHotkeys[2]),
-                FocusLeader = ToBindingConfig(GlobalHotkeys[3])
+                FocusLeader = ToBindingConfig(GlobalHotkeys[3]),
+                BroadcastKey = new HotkeyBindingConfig
+                {
+                    DisplayName = BroadcastKeyDisplay,
+                    Modifiers = 0,
+                    VirtualKeyCode = BroadcastKeyVirtualKeyCode
+                }
             };
         }
 
@@ -851,8 +890,9 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         if (leaderHandle != 0)
             _focusService.SetLeader(leaderHandle);
 
-        // Charger les raccourcis globaux
+        // Charger les raccourcis globaux + touche broadcast
         InitializeGlobalHotkeys(profile.GlobalHotkeys);
+        InitializeBroadcastKey(profile.GlobalHotkeys.BroadcastKey);
 
         if (HotkeysActive)
             RegisterAllHotkeys();
