@@ -42,8 +42,9 @@ public partial class MainWindow : Window
         return IntPtr.Zero;
     }
 
-    protected override void OnClosed(EventArgs e)
+    protected override async void OnClosed(EventArgs e)
     {
+        await _viewModel.SaveSessionStateAsync();
         (DataContext as IDisposable)?.Dispose();
         base.OnClosed(e);
     }

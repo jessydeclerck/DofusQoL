@@ -41,6 +41,7 @@ public partial class App : Application
         services.AddSingleton<IHotkeyService, HotkeyService>();
         services.AddSingleton<IFocusService, FocusService>();
         services.AddSingleton<IProfileService, ProfileService>();
+        services.AddSingleton<IAppStateService, AppStateService>();
         services.AddSingleton<IBroadcastService, BroadcastService>();
         services.AddSingleton<IPushToBroadcastService, PushToBroadcastService>();
         services.AddSingleton<IGroupInviteService, GroupInviteService>();
