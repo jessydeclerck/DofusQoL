@@ -148,8 +148,10 @@
             <StackPanel Orientation="Horizontal">
                 <Button Content="Inviter tout le monde"
                         Command="{Binding InviteAllCommand}" Padding="10,5" />
+                <Button Content="Toggle Autofollow"
+                        Command="{Binding ToggleAutoFollowCommand}" Padding="10,5" Margin="10,0,0,0" />
                 <TextBlock VerticalAlignment="Center" Margin="10,0,0,0"
-                           Text="Envoie /invite à tous les personnages depuis le leader." Foreground="Gray" />
+                           Text="Invite : /invite depuis le leader. Autofollow : Ctrl+W sur chaque suiveur." Foreground="Gray" />
             </StackPanel>
         </GroupBox>
 

@@ -9,7 +9,10 @@ public class GroupInviteService : IGroupInviteService
     private static readonly ILogger Logger = Log.ForContext<GroupInviteService>();
     private const ushort VK_RETURN = 0x0D;
     private const ushort VK_SPACE = 0x20;
+    private const ushort VK_CONTROL = 0x11;
+    private const ushort VK_W = 0x57;
     private const int DelayBetweenInvites = 300;
+    private const int DelayBetweenFollows = 200;
     private const int FocusDelayMs = 100;
     private const int FocusMaxRetries = 3;
 
@@ -101,5 +104,60 @@ public class GroupInviteService : IGroupInviteService
         Logger.Information("[GROUP-INVITE] {Invited} personnage(s) invité(s)", invited);
 
         return new GroupInviteResult { Invited = invited, Success = true };
+    }
+
+    public async Task<GroupInviteResult> ToggleAutoFollowAsync(IReadOnlyList<DofusWindow> windows, DofusWindow leader)
+    {
+        if (windows.Count <= 1)
+        {
+            return new GroupInviteResult { Invited = 0, Success = true };
+        }
+
+        var toggled = 0;
+
+        foreach (var window in windows)
+        {
+            if (window.Handle == leader.Handle)
+                continue;
+
+            // Focus la fenêtre cible avec retries
+            var focused = false;
+            for (var attempt = 1; attempt <= FocusMaxRetries; attempt++)
+            {
+                _windowHelper.FocusWindow(window.Handle);
+                await Task.Delay(FocusDelayMs);
+
+                if (_windowHelper.GetForegroundWindow() == window.Handle)
+                {
+                    focused = true;
+                    break;
+                }
+
+                Logger.Warning("[AUTOFOLLOW] Focus échoué pour {Handle} (tentative {Attempt}/{Max})",
+                    window.Handle, attempt, FocusMaxRetries);
+            }
+
+            if (!focused)
+            {
+                Logger.Warning("[AUTOFOLLOW] Impossible de focus {Handle}, skip", window.Handle);
+                continue;
+            }
+
+            // Ctrl+W pour toggle autofollow
+            _windowHelper.SendKeyCombination(VK_CONTROL, VK_W);
+            toggled++;
+
+            Logger.Information("[AUTOFOLLOW] Ctrl+W envoyé à {Handle}", window.Handle);
+
+            if (toggled < windows.Count - 1)
+                await Task.Delay(DelayBetweenFollows);
+        }
+
+        // Restaurer le focus sur le leader
+        _windowHelper.FocusWindow(leader.Handle);
+
+        Logger.Information("[AUTOFOLLOW] {Count} fenêtre(s) toggled", toggled);
+
+        return new GroupInviteResult { Invited = toggled, Success = true };
     }
 }

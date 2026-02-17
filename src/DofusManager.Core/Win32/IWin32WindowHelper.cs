@@ -98,4 +98,9 @@ public interface IWin32WindowHelper
     /// Indépendant du layout clavier.
     /// </summary>
     bool SendText(string text);
+
+    /// <summary>
+    /// Injecte un raccourci clavier (modifier down → touche down+up → modifier up) via scan codes.
+    /// </summary>
+    bool SendKeyCombination(ushort modifierVk, ushort keyVk);
 }
