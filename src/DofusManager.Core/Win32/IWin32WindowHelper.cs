@@ -81,4 +81,10 @@ public interface IWin32WindowHelper
     /// Injecte un clic gauche hardware via SendInput à la position actuelle du curseur.
     /// </summary>
     bool SendMouseClick();
+
+    /// <summary>
+    /// Injecte un relâchement du bouton gauche via SendInput (LBUTTONUP uniquement).
+    /// Sert à fermer un clic en cours pour éviter un état "drag" fantôme.
+    /// </summary>
+    bool SendMouseUp();
 }
