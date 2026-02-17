@@ -29,6 +29,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private string? _activeProfileName;
     private string? _pendingProfileName;
     private Profile? _sessionSnapshot; // snapshot implicite quand aucun profil n'est actif
+    private bool _applyingProfile; // guard contre les callbacks durant ApplyProfile
 
     // Virtual Key constants
     private const uint VK_TAB = 0x09;
@@ -416,6 +417,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     /// </summary>
     public void OnHotkeyConfigChanged()
     {
+        if (_applyingProfile) return;
         if (HotkeysActive)
             RegisterAllHotkeys();
         UpdateSessionSnapshot();
@@ -851,6 +853,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     /// </summary>
     private void UpdateSessionSnapshot()
     {
+        if (_applyingProfile) return;
         if (Characters.Count > 0)
             _sessionSnapshot = SnapshotCurrentProfile("__session__");
     }
@@ -1029,66 +1032,74 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     private void ApplyProfile(Profile profile)
     {
-        var detectedWindows = _detectionService.DetectedWindows;
-        var matchedRows = new List<CharacterRowViewModel>();
-        nint leaderHandle = 0;
-
-        foreach (var slot in profile.Slots.OrderBy(s => s.Index))
+        _applyingProfile = true;
+        try
         {
-            var match = detectedWindows.FirstOrDefault(w =>
-                GlobMatcher.IsMatch(slot.WindowTitlePattern, w.Title) &&
-                matchedRows.All(r => r.Handle != w.Handle));
+            var detectedWindows = _detectionService.DetectedWindows;
+            var matchedRows = new List<CharacterRowViewModel>();
+            nint leaderHandle = 0;
 
-            if (match is null) continue;
-
-            // Déterminer le raccourci : d'abord les nouveaux champs, sinon fallback sur le défaut
-            uint modifiers = slot.FocusHotkeyModifiers;
-            uint vk = slot.FocusHotkeyVirtualKeyCode;
-            string display = slot.FocusHotkey ?? string.Empty;
-
-            if (vk == 0)
+            foreach (var slot in profile.Slots.OrderBy(s => s.Index))
             {
-                var def = HotkeyDefaults.GetDefaultSlotHotkey(slot.Index);
-                if (def.HasValue)
+                var match = detectedWindows.FirstOrDefault(w =>
+                    GlobMatcher.IsMatch(slot.WindowTitlePattern, w.Title) &&
+                    matchedRows.All(r => r.Handle != w.Handle));
+
+                if (match is null) continue;
+
+                // Déterminer le raccourci : d'abord les nouveaux champs, sinon fallback sur le défaut
+                uint modifiers = slot.FocusHotkeyModifiers;
+                uint vk = slot.FocusHotkeyVirtualKeyCode;
+                string display = slot.FocusHotkey ?? string.Empty;
+
+                if (vk == 0)
                 {
-                    modifiers = (uint)def.Value.Modifiers;
-                    vk = def.Value.VirtualKeyCode;
-                    display = def.Value.DisplayName;
+                    var def = HotkeyDefaults.GetDefaultSlotHotkey(slot.Index);
+                    if (def.HasValue)
+                    {
+                        modifiers = (uint)def.Value.Modifiers;
+                        vk = def.Value.VirtualKeyCode;
+                        display = def.Value.DisplayName;
+                    }
                 }
+
+                matchedRows.Add(new CharacterRowViewModel(this)
+                {
+                    Handle = match.Handle,
+                    SlotIndex = matchedRows.Count,
+                    Title = match.Title,
+                    ProcessId = match.ProcessId,
+                    IsLeader = slot.IsLeader,
+                    HotkeyModifiers = modifiers,
+                    VirtualKeyCode = vk,
+                    HotkeyDisplay = display
+                });
+
+                if (slot.IsLeader)
+                    leaderHandle = match.Handle;
             }
 
-            matchedRows.Add(new CharacterRowViewModel(this)
-            {
-                Handle = match.Handle,
-                SlotIndex = matchedRows.Count,
-                Title = match.Title,
-                ProcessId = match.ProcessId,
-                IsLeader = slot.IsLeader,
-                HotkeyModifiers = modifiers,
-                VirtualKeyCode = vk,
-                HotkeyDisplay = display
-            });
+            // Remplacer la liste des personnages
+            Characters.Clear();
+            foreach (var row in matchedRows)
+                Characters.Add(row);
 
-            if (slot.IsLeader)
-                leaderHandle = match.Handle;
+            // Mettre à jour FocusService
+            _focusService.UpdateSlots(GetCurrentDofusWindows());
+            if (leaderHandle != 0)
+                _focusService.SetLeader(leaderHandle);
+
+            // Charger les raccourcis globaux + touche broadcast
+            InitializeGlobalHotkeys(profile.GlobalHotkeys);
+            InitializeBroadcastKey(profile.GlobalHotkeys.BroadcastKey);
+
+            if (HotkeysActive)
+                RegisterAllHotkeys();
         }
-
-        // Remplacer la liste des personnages
-        Characters.Clear();
-        foreach (var row in matchedRows)
-            Characters.Add(row);
-
-        // Mettre à jour FocusService
-        _focusService.UpdateSlots(GetCurrentDofusWindows());
-        if (leaderHandle != 0)
-            _focusService.SetLeader(leaderHandle);
-
-        // Charger les raccourcis globaux + touche broadcast
-        InitializeGlobalHotkeys(profile.GlobalHotkeys);
-        InitializeBroadcastKey(profile.GlobalHotkeys.BroadcastKey);
-
-        if (HotkeysActive)
-            RegisterAllHotkeys();
+        finally
+        {
+            _applyingProfile = false;
+        }
     }
 
     private static string ExtractCharacterName(string windowTitle)
