@@ -41,7 +41,32 @@
 - [x] Tests unitaires (33 nouveaux : ProfileSlotTests + BroadcastPresetTests + ProfileTests + GlobMatcherTests + ProfileServiceTests) — total 99
 
 ## Itération 4 — Broadcast d'input (F4)
-- À planifier
+- [x] BroadcastPreset model enrichi (validation, CustomTargetSlotIndices, méthode Validate())
+- [x] BroadcastResult record (Success, WindowsTargeted, WindowsReached, ErrorMessage)
+- [x] HotkeyAction.Broadcast ajouté à l'enum
+- [x] NativeMethods.txt — PostMessage, GetClientRect, RECT
+- [x] IWin32WindowHelper étendu — PostMessage, GetClientRect
+- [x] WindowHelper — implémentation CsWin32 des nouvelles méthodes
+- [x] IBroadcastService + BroadcastService (envoi touche/clic via PostMessage, délais aléatoires, cooldown anti-rafale, pause globale, résolution cibles all/allExceptLeader/custom, ordre profile/random)
+- [x] BroadcastViewModel (gestion presets, ajout/suppression, test broadcast, toggle pause, chargement depuis profil)
+- [x] BroadcastView.xaml (4e onglet : formulaire preset, liste presets, boutons tester/supprimer/pause)
+- [x] MainWindow.xaml — ajout onglet Broadcast
+- [x] MainViewModel — intègre BroadcastViewModel
+- [x] App.xaml.cs — DI pour IBroadcastService, BroadcastViewModel
+- [x] InternalsVisibleTo pour les tests
+- [x] Tests unitaires (47 nouveaux : BroadcastServiceTests 26 + BroadcastPresetTests 12 + HotkeyBindingTests update) — total 146
+
+## Itération 4b — Push-to-Broadcast (Hold to Broadcast)
+- [x] NativeMethods.txt — SetWindowsHookEx, UnhookWindowsHookEx, CallNextHookEx, GetCursorPos, ScreenToClient, GetAsyncKeyState, GetForegroundWindow, GetModuleHandle, MSLLHOOKSTRUCT
+- [x] IWin32WindowHelper étendu — ScreenToClient, GetForegroundWindow, IsKeyDown
+- [x] WindowHelper — implémentation CsWin32 des nouvelles méthodes
+- [x] HotkeyAction.PushToBroadcast ajouté à l'enum
+- [x] IPushToBroadcastService + PushToBroadcastService (hook WH_MOUSE_LL temporaire, capture clic, conversion coords ScreenToClient, broadcast PostMessage vers toutes les autres fenêtres Dofus)
+- [x] BroadcastViewModel — TogglePushToBroadcast command, IsArmed property, DispatcherTimer pour détecter relâchement touche via GetAsyncKeyState
+- [x] BroadcastViewModel — mode écoute avec DispatcherTimer poll GetAsyncKeyState(VK_CONTROL), arm/disarm automatique sur Ctrl hold/release
+- [x] BroadcastView.xaml — section Push-to-Broadcast avec bouton activer/désactiver + indicateur visuel (rouge quand armé)
+- [x] App.xaml.cs — DI pour IPushToBroadcastService
+- [x] Tests unitaires (17 nouveaux : PushToBroadcastServiceTests + HotkeyBindingTests update) — total 163
 
 ## Itération 5 — Session manager (F5)
 - À planifier

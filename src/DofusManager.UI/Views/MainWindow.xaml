@@ -60,5 +60,10 @@
         <TabItem Header="Profils">
             <views:ProfileView DataContext="{Binding ProfileViewModel}" />
         </TabItem>
+
+        <!-- Onglet Broadcast (F4) -->
+        <TabItem Header="Broadcast">
+            <views:BroadcastView DataContext="{Binding BroadcastViewModel}" />
+        </TabItem>
     </TabControl>
 </Window>
