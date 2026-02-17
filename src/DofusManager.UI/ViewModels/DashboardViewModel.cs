@@ -28,6 +28,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     // Suivi du profil actif pour la persistance de session
     private string? _activeProfileName;
     private string? _pendingProfileName;
+    private Profile? _sessionSnapshot; // snapshot implicite quand aucun profil n'est actif
 
     // Virtual Key constants
     private const uint VK_TAB = 0x09;
@@ -417,6 +418,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     {
         if (HotkeysActive)
             RegisterAllHotkeys();
+        UpdateSessionSnapshot();
     }
 
     // ===== CHARACTERS (ordonnement, leader) =====
@@ -434,6 +436,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         ReindexSlots();
         _focusService.UpdateSlots(GetCurrentDofusWindows());
         if (HotkeysActive) RegisterAllHotkeys();
+        UpdateSessionSnapshot();
     }
 
     [RelayCommand]
@@ -447,6 +450,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
         row.IsLeader = true;
         _focusService.SetLeader(row.Handle);
+        UpdateSessionSnapshot();
         StatusText = $"Leader : {row.DisplayName}";
         Logger.Information("Leader défini : {DisplayName}", row.DisplayName);
     }
@@ -745,15 +749,26 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 }
             }
 
-            // Si un profil est actif et de nouvelles fenêtres apparaissent, réappliquer le profil
-            // pour restaurer l'ordre des slots, le leader et les hotkeys custom
-            if (_activeProfileName is not null && HasNewWindows(e.Current))
+            // Si de nouvelles fenêtres apparaissent, réappliquer la config connue
+            if (HasNewWindows(e.Current))
             {
-                var profile = _profileService.GetProfile(_activeProfileName);
-                if (profile is not null)
+                // Profil actif → réappliquer le profil
+                if (_activeProfileName is not null)
                 {
-                    ApplyProfile(profile);
-                    Logger.Information("Profil réappliqué après changement de fenêtres : {ProfileName}", _activeProfileName);
+                    var profile = _profileService.GetProfile(_activeProfileName);
+                    if (profile is not null)
+                    {
+                        ApplyProfile(profile);
+                        Logger.Information("Profil réappliqué après changement de fenêtres : {ProfileName}", _activeProfileName);
+                        return;
+                    }
+                }
+
+                // Pas de profil mais un snapshot de session → restaurer l'ordre/leader/hotkeys
+                if (_activeProfileName is null && _sessionSnapshot is not null)
+                {
+                    ApplyProfile(_sessionSnapshot);
+                    Logger.Information("Snapshot de session réappliqué après changement de fenêtres");
                     return;
                 }
             }
@@ -826,7 +841,18 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         if (leaderRow is not null)
             _focusService.SetLeader(leaderRow.Handle);
 
+        UpdateSessionSnapshot();
         StatusText = $"{Characters.Count} fenêtre(s) Dofus détectée(s)";
+    }
+
+    /// <summary>
+    /// Met à jour le snapshot de session implicite (ordre des slots, leader, hotkeys).
+    /// Utilisé pour restaurer la config quand les fenêtres sont relancées sans profil actif.
+    /// </summary>
+    private void UpdateSessionSnapshot()
+    {
+        if (Characters.Count > 0)
+            _sessionSnapshot = SnapshotCurrentProfile("__session__");
     }
 
     private IReadOnlyList<DofusWindow> GetCurrentDofusWindows()
