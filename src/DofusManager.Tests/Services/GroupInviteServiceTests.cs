@@ -13,6 +13,8 @@ public class GroupInviteServiceTests
 
     private const ushort VK_RETURN = 0x0D;
     private const ushort VK_SPACE = 0x20;
+    private const ushort VK_CONTROL = 0x11;
+    private const ushort VK_W = 0x57;
 
     public GroupInviteServiceTests()
     {
@@ -28,6 +30,7 @@ public class GroupInviteServiceTests
 
         _mockHelper.Setup(h => h.SendKeyPress(It.IsAny<ushort>())).Returns(true);
         _mockHelper.Setup(h => h.SendText(It.IsAny<string>())).Returns(true);
+        _mockHelper.Setup(h => h.SendKeyCombination(It.IsAny<ushort>(), It.IsAny<ushort>())).Returns(true);
 
         _service = new GroupInviteService(_mockHelper.Object);
     }
@@ -219,5 +222,90 @@ public class GroupInviteServiceTests
         // Seul /invite Perso3 doit être envoyé
         _mockHelper.Verify(h => h.SendText("/invite Perso3"), Times.Once);
         _mockHelper.Verify(h => h.SendText(It.Is<string>(s => s.Contains("invite"))), Times.Once);
+    }
+
+    // --- ToggleAutoFollowAsync ---
+
+    [Fact]
+    public async Task ToggleAutoFollow_SendsCtrlW_ToAllExceptLeader()
+    {
+        var windows = CreateWindows("Leader", "Perso2", "Perso3");
+        var leader = windows[0];
+
+        var result = await _service.ToggleAutoFollowAsync(windows, leader);
+
+        Assert.True(result.Success);
+        Assert.Equal(2, result.Invited);
+        _mockHelper.Verify(h => h.SendKeyCombination(VK_CONTROL, VK_W), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task ToggleAutoFollow_FocusesEachNonLeaderWindow()
+    {
+        var windows = CreateWindows("Leader", "Perso2", "Perso3");
+        var leader = windows[0];
+
+        await _service.ToggleAutoFollowAsync(windows, leader);
+
+        // Focus sur chaque suiveur + restauration leader
+        _mockHelper.Verify(h => h.FocusWindow((nint)200), Times.Once);
+        _mockHelper.Verify(h => h.FocusWindow((nint)300), Times.Once);
+        _mockHelper.Verify(h => h.FocusWindow(leader.Handle), Times.Once); // restauration
+    }
+
+    [Fact]
+    public async Task ToggleAutoFollow_RestoresFocusToLeader()
+    {
+        var windows = CreateWindows("Leader", "Perso2");
+        var leader = windows[0];
+
+        await _service.ToggleAutoFollowAsync(windows, leader);
+
+        // Le dernier appel FocusWindow doit être sur le leader
+        var calls = _mockHelper.Invocations
+            .Where(i => i.Method.Name == "FocusWindow")
+            .Select(i => (nint)i.Arguments[0])
+            .ToList();
+
+        Assert.Equal(leader.Handle, calls[^1]);
+    }
+
+    [Fact]
+    public async Task ToggleAutoFollow_SingleWindow_ReturnsZero()
+    {
+        var windows = CreateWindows("Leader");
+        var leader = windows[0];
+
+        var result = await _service.ToggleAutoFollowAsync(windows, leader);
+
+        Assert.True(result.Success);
+        Assert.Equal(0, result.Invited);
+        _mockHelper.Verify(h => h.SendKeyCombination(It.IsAny<ushort>(), It.IsAny<ushort>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ToggleAutoFollow_SkipsWindowIfFocusFails()
+    {
+        var windows = CreateWindows("Leader", "Perso2", "Perso3");
+        var leader = windows[0];
+
+        // Le focus échoue pour Perso2 (handle 200) mais réussit pour Perso3 (handle 300)
+        _mockHelper.Setup(h => h.FocusWindow(It.IsAny<nint>()))
+            .Returns(true);
+        _mockHelper.Setup(h => h.GetForegroundWindow())
+            .Returns((nint)0); // échoue par défaut
+
+        // Seul le focus sur 300 réussit (et la restauration leader)
+        _mockHelper.Setup(h => h.FocusWindow((nint)300))
+            .Callback(() =>
+            {
+                _mockHelper.Setup(h => h.GetForegroundWindow()).Returns((nint)300);
+            })
+            .Returns(true);
+
+        var result = await _service.ToggleAutoFollowAsync(windows, leader);
+
+        Assert.Equal(1, result.Invited);
+        _mockHelper.Verify(h => h.SendKeyCombination(VK_CONTROL, VK_W), Times.Once);
     }
 }

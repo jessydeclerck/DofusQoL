@@ -330,6 +330,49 @@ public partial class BroadcastViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    private async Task ToggleAutoFollow()
+    {
+        var windows = _detectionService.DetectedWindows;
+        var leader = _focusService.CurrentLeader;
+
+        if (leader is null)
+        {
+            StatusText = "Aucun leader désigné — impossible de toggle autofollow";
+            return;
+        }
+
+        if (windows.Count <= 1)
+        {
+            StatusText = "Pas assez de fenêtres pour autofollow";
+            return;
+        }
+
+        StatusText = "Toggle autofollow en cours...";
+
+        try
+        {
+            var result = await _groupInviteService.ToggleAutoFollowAsync(windows, leader);
+
+            _dispatcher.Invoke(() =>
+            {
+                if (result.Success)
+                {
+                    StatusText = $"Autofollow : Ctrl+W envoyé à {result.Invited} fenêtre(s)";
+                }
+                else
+                {
+                    StatusText = $"Autofollow échoué : {result.ErrorMessage}";
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, "Erreur lors du toggle autofollow");
+            StatusText = $"Erreur : {ex.Message}";
+        }
+    }
+
     private void OnBroadcastPerformed(object? sender, int windowCount)
     {
         _dispatcher.Invoke(() =>

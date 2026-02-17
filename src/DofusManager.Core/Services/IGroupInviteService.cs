@@ -6,6 +6,8 @@ public interface IGroupInviteService
 {
     Task<GroupInviteResult> InviteAllAsync(IReadOnlyList<DofusWindow> windows, DofusWindow leader);
 
+    Task<GroupInviteResult> ToggleAutoFollowAsync(IReadOnlyList<DofusWindow> windows, DofusWindow leader);
+
     static string ExtractCharacterName(string title)
     {
         if (string.IsNullOrWhiteSpace(title))

@@ -325,4 +325,37 @@ public class WindowHelper : IWin32WindowHelper
         }
         return true;
     }
+
+    public unsafe bool SendKeyCombination(ushort modifierVk, ushort keyVk)
+    {
+        var modScan = PInvoke.MapVirtualKey(modifierVk, Windows.Win32.UI.Input.KeyboardAndMouse.MAP_VIRTUAL_KEY_TYPE.MAPVK_VK_TO_VSC);
+        var keyScan = PInvoke.MapVirtualKey(keyVk, Windows.Win32.UI.Input.KeyboardAndMouse.MAP_VIRTUAL_KEY_TYPE.MAPVK_VK_TO_VSC);
+
+        var inputs = new Windows.Win32.UI.Input.KeyboardAndMouse.INPUT[4];
+
+        // Modifier down
+        inputs[0].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_KEYBOARD;
+        inputs[0].Anonymous.ki.wScan = (ushort)modScan;
+        inputs[0].Anonymous.ki.dwFlags = Windows.Win32.UI.Input.KeyboardAndMouse.KEYBD_EVENT_FLAGS.KEYEVENTF_SCANCODE;
+
+        // Key down
+        inputs[1].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_KEYBOARD;
+        inputs[1].Anonymous.ki.wScan = (ushort)keyScan;
+        inputs[1].Anonymous.ki.dwFlags = Windows.Win32.UI.Input.KeyboardAndMouse.KEYBD_EVENT_FLAGS.KEYEVENTF_SCANCODE;
+
+        // Key up
+        inputs[2].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_KEYBOARD;
+        inputs[2].Anonymous.ki.wScan = (ushort)keyScan;
+        inputs[2].Anonymous.ki.dwFlags = Windows.Win32.UI.Input.KeyboardAndMouse.KEYBD_EVENT_FLAGS.KEYEVENTF_SCANCODE |
+                                          Windows.Win32.UI.Input.KeyboardAndMouse.KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+
+        // Modifier up
+        inputs[3].type = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE.INPUT_KEYBOARD;
+        inputs[3].Anonymous.ki.wScan = (ushort)modScan;
+        inputs[3].Anonymous.ki.dwFlags = Windows.Win32.UI.Input.KeyboardAndMouse.KEYBD_EVENT_FLAGS.KEYEVENTF_SCANCODE |
+                                          Windows.Win32.UI.Input.KeyboardAndMouse.KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+
+        var sent = PInvoke.SendInput(inputs.AsSpan(), sizeof(Windows.Win32.UI.Input.KeyboardAndMouse.INPUT));
+        return sent == 4;
+    }
 }
