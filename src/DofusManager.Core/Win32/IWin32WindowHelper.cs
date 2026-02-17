@@ -87,4 +87,15 @@ public interface IWin32WindowHelper
     /// Sert à fermer un clic en cours pour éviter un état "drag" fantôme.
     /// </summary>
     bool SendMouseUp();
+
+    /// <summary>
+    /// Injecte une frappe clavier (key down + key up) pour une touche virtuelle via SendInput.
+    /// </summary>
+    bool SendKeyPress(ushort virtualKeyCode);
+
+    /// <summary>
+    /// Injecte du texte caractère par caractère via SendInput + KEYEVENTF_UNICODE.
+    /// Indépendant du layout clavier.
+    /// </summary>
+    bool SendText(string text);
 }

@@ -29,3 +29,4 @@ ClientToScreen
 SetCursorPos
 SendInput
 INPUT
+MapVirtualKey

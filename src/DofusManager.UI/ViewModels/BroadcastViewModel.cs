@@ -17,6 +17,7 @@ public partial class BroadcastViewModel : ObservableObject
     private readonly IWindowDetectionService _detectionService;
     private readonly IFocusService _focusService;
     private readonly IPushToBroadcastService _pushToBroadcastService;
+    private readonly IGroupInviteService _groupInviteService;
     private readonly IWin32WindowHelper _windowHelper;
     private readonly Dispatcher _dispatcher;
 
@@ -94,12 +95,14 @@ public partial class BroadcastViewModel : ObservableObject
         IWindowDetectionService detectionService,
         IFocusService focusService,
         IPushToBroadcastService pushToBroadcastService,
+        IGroupInviteService groupInviteService,
         IWin32WindowHelper windowHelper)
     {
         _broadcastService = broadcastService;
         _detectionService = detectionService;
         _focusService = focusService;
         _pushToBroadcastService = pushToBroadcastService;
+        _groupInviteService = groupInviteService;
         _windowHelper = windowHelper;
         _dispatcher = Dispatcher.CurrentDispatcher;
 
@@ -281,6 +284,49 @@ public partial class BroadcastViewModel : ObservableObject
             _ctrlPollTimer.Tick -= OnCtrlPollTimerTick;
             _ctrlPollTimer.Stop();
             _ctrlPollTimer = null;
+        }
+    }
+
+    [RelayCommand]
+    private async Task InviteAll()
+    {
+        var windows = _detectionService.DetectedWindows;
+        var leader = _focusService.CurrentLeader;
+
+        if (leader is null)
+        {
+            StatusText = "Aucun leader désigné — impossible d'inviter";
+            return;
+        }
+
+        if (windows.Count <= 1)
+        {
+            StatusText = "Pas assez de fenêtres pour inviter";
+            return;
+        }
+
+        StatusText = "Invitation du groupe en cours...";
+
+        try
+        {
+            var result = await _groupInviteService.InviteAllAsync(windows, leader);
+
+            _dispatcher.Invoke(() =>
+            {
+                if (result.Success)
+                {
+                    StatusText = $"Groupe : {result.Invited} personnage(s) invité(s)";
+                }
+                else
+                {
+                    StatusText = $"Invitation échouée : {result.ErrorMessage}";
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, "Erreur lors de l'invitation du groupe");
+            StatusText = $"Erreur : {ex.Message}";
         }
     }
 
