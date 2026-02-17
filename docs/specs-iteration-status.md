@@ -68,6 +68,27 @@
 - [x] App.xaml.cs — DI pour IPushToBroadcastService
 - [x] Tests unitaires (17 nouveaux : PushToBroadcastServiceTests + HotkeyBindingTests update) — total 163
 
+## Refactoring UX — Vue unique avec raccourcis configurables
+- [x] Models : GlobalHotkeyConfig + HotkeyBindingConfig (4 raccourcis globaux avec CreateDefault())
+- [x] Models : HotkeyDefaults (GetDefaultSlotHotkey F1-F8)
+- [x] Models : ProfileSlot étendu (FocusHotkeyModifiers, FocusHotkeyVirtualKeyCode)
+- [x] Models : Profile étendu (GlobalHotkeys, BroadcastPresets marqué [Obsolete])
+- [x] HotkeyCaptureBox (contrôle TextBox custom, capture clavier, conversion WPF Key → Win32 VK)
+- [x] DashboardViewModel unifié (remplace MainViewModel, HotkeyViewModel, ProfileViewModel, BroadcastViewModel)
+- [x] CharacterRowViewModel + GlobalHotkeyRowViewModel (row VMs avec notification hotkey config changed)
+- [x] Data-driven RegisterAllHotkeys() (slots + globaux, fallback Ctrl+Tab → Ctrl+Espace)
+- [x] MoveUp/MoveDown (réordonnement slots via ObservableCollection.Move + ReindexSlots)
+- [x] ToggleLeader (radio behavior, un seul leader)
+- [x] ResetDefaults (F1-F8 + raccourcis globaux par défaut)
+- [x] SyncCharacters (préserve ordre existant, ajoute nouvelles fenêtres, supprime disparues)
+- [x] SnapshotCurrentProfile / ApplyProfile (save/load avec GlobalHotkeys + slot hotkeys)
+- [x] MainWindow.xaml réécrit (DockPanel + ScrollViewer + 5 GroupBox : Personnages, Raccourcis globaux, Groupe, Push-to-Broadcast, Profil)
+- [x] MainWindow.xaml.cs simplifié (injecte DashboardViewModel)
+- [x] App.xaml.cs — DI : DashboardViewModel unique remplace les 4 anciens VMs
+- [x] Suppression fichiers : HotkeyView, ProfileView, BroadcastView, MainViewModel, HotkeyViewModel, ProfileViewModel, BroadcastViewModel
+- [x] Backward compat JSON : profils legacy sans nouveaux champs chargent correctement (defaults)
+- [x] Tests unitaires (24 nouveaux : GlobalHotkeyConfigTests 8 + HotkeyDefaultsTests 14 + ProfileServiceTests 2) — total 206
+
 ## Itération 5 — Session manager (F5)
 - À planifier
 

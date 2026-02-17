@@ -10,16 +10,14 @@ public partial class MainWindow : Window
     private const int WM_HOTKEY = 0x0312;
 
     private readonly IHotkeyService _hotkeyService;
-    private readonly HotkeyViewModel _hotkeyViewModel;
-    private readonly ProfileViewModel _profileViewModel;
+    private readonly DashboardViewModel _viewModel;
 
-    public MainWindow(MainViewModel viewModel, IHotkeyService hotkeyService)
+    public MainWindow(DashboardViewModel viewModel, IHotkeyService hotkeyService)
     {
         InitializeComponent();
         DataContext = viewModel;
+        _viewModel = viewModel;
         _hotkeyService = hotkeyService;
-        _hotkeyViewModel = viewModel.HotkeyViewModel;
-        _profileViewModel = viewModel.ProfileViewModel;
     }
 
     protected override async void OnSourceInitialized(EventArgs e)
@@ -30,8 +28,8 @@ public partial class MainWindow : Window
         var source = HwndSource.FromHwnd(hwnd);
         source?.AddHook(WndProc);
 
-        _hotkeyViewModel.InitializeHotkeys(hwnd);
-        await _profileViewModel.InitializeAsync();
+        _viewModel.InitializeHotkeys(hwnd);
+        await _viewModel.InitializeProfilesAsync();
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)

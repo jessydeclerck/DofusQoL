@@ -319,4 +319,79 @@ public class ProfileServiceTests : IDisposable
 
         Assert.True(File.Exists(nestedPath));
     }
+
+    [Fact]
+    public async Task SaveAndLoad_RoundTrip_WithGlobalHotkeys()
+    {
+        var profile = CreateTestProfile("Team Custom", slotCount: 2);
+        profile.Slots[0].FocusHotkeyModifiers = (uint)HotkeyModifiers.None;
+        profile.Slots[0].FocusHotkeyVirtualKeyCode = 0x70; // F1
+        profile.Slots[1].FocusHotkeyModifiers = (uint)HotkeyModifiers.Control;
+        profile.Slots[1].FocusHotkeyVirtualKeyCode = 0x42; // B
+
+        profile.GlobalHotkeys = new GlobalHotkeyConfig
+        {
+            NextWindow = new HotkeyBindingConfig { DisplayName = "Alt+N", Modifiers = (uint)HotkeyModifiers.Alt, VirtualKeyCode = 0x4E },
+            PreviousWindow = new HotkeyBindingConfig { DisplayName = "Alt+P", Modifiers = (uint)HotkeyModifiers.Alt, VirtualKeyCode = 0x50 },
+            LastWindow = new HotkeyBindingConfig { DisplayName = "Ctrl+`", Modifiers = (uint)HotkeyModifiers.Control, VirtualKeyCode = 0xC0 },
+            FocusLeader = new HotkeyBindingConfig { DisplayName = "Ctrl+F1", Modifiers = (uint)HotkeyModifiers.Control, VirtualKeyCode = 0x70 }
+        };
+
+        _service.CreateProfile(profile);
+        await _service.SaveAsync();
+
+        var newService = new ProfileService(_tempFile);
+        await newService.LoadAsync();
+        var loaded = newService.GetProfile("Team Custom");
+
+        Assert.NotNull(loaded);
+
+        // Slot hotkeys
+        Assert.Equal(0x70u, loaded.Slots[0].FocusHotkeyVirtualKeyCode);
+        Assert.Equal((uint)HotkeyModifiers.None, loaded.Slots[0].FocusHotkeyModifiers);
+        Assert.Equal(0x42u, loaded.Slots[1].FocusHotkeyVirtualKeyCode);
+        Assert.Equal((uint)HotkeyModifiers.Control, loaded.Slots[1].FocusHotkeyModifiers);
+
+        // Global hotkeys
+        Assert.Equal("Alt+N", loaded.GlobalHotkeys.NextWindow.DisplayName);
+        Assert.Equal((uint)HotkeyModifiers.Alt, loaded.GlobalHotkeys.NextWindow.Modifiers);
+        Assert.Equal(0x4Eu, loaded.GlobalHotkeys.NextWindow.VirtualKeyCode);
+        Assert.Equal("Alt+P", loaded.GlobalHotkeys.PreviousWindow.DisplayName);
+    }
+
+    [Fact]
+    public async Task SaveAndLoad_LegacyProfile_WithoutNewFields_LoadsCorrectly()
+    {
+        // Simule un profil legacy (sans FocusHotkeyModifiers/VirtualKeyCode/GlobalHotkeys)
+        var legacyJson = """
+        [
+            {
+                "ProfileName": "Legacy Team",
+                "Slots": [
+                    { "Index": 0, "CharacterName": "Perso0", "WindowTitlePattern": "*Perso0*", "IsLeader": true, "FocusHotkey": "F1" },
+                    { "Index": 1, "CharacterName": "Perso1", "WindowTitlePattern": "*Perso1*", "IsLeader": false, "FocusHotkey": "F2" }
+                ],
+                "BroadcastPresets": [],
+                "CreatedAt": "2024-01-01T00:00:00Z",
+                "LastModifiedAt": "2024-01-01T00:00:00Z"
+            }
+        ]
+        """;
+        await File.WriteAllTextAsync(_tempFile, legacyJson);
+
+        var newService = new ProfileService(_tempFile);
+        await newService.LoadAsync();
+
+        var loaded = newService.GetProfile("Legacy Team");
+        Assert.NotNull(loaded);
+        Assert.Equal(2, loaded.Slots.Count);
+
+        // Les nouveaux champs ont les valeurs par défaut (0)
+        Assert.Equal(0u, loaded.Slots[0].FocusHotkeyModifiers);
+        Assert.Equal(0u, loaded.Slots[0].FocusHotkeyVirtualKeyCode);
+
+        // GlobalHotkeys est initialisé avec les defaults
+        Assert.NotNull(loaded.GlobalHotkeys);
+        Assert.Equal("Ctrl+Tab", loaded.GlobalHotkeys.NextWindow.DisplayName);
+    }
 }
