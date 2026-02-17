@@ -714,13 +714,11 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     {
         _dispatcher.Invoke(() =>
         {
-            if (HasNewWindows(e.Current))
-            {
-                // Tenter de réappliquer un profil ou snapshot si des patterns matchent
-                var profileToApply = ResolveProfileToApply();
-                if (profileToApply is not null && TryApplyProfile(profileToApply, e.Current))
-                    return;
-            }
+            // Quand un profil/snapshot est actif, toujours réappliquer pour montrer
+            // les personnages connectés ET déconnectés (grisés)
+            var profileToApply = ResolveProfileToApply();
+            if (profileToApply is not null && TryApplyProfile(profileToApply, e.Current))
+                return;
 
             SyncCharacters(e.Current);
         });
@@ -787,15 +785,6 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         }
 
         return true;
-    }
-
-    private bool HasNewWindows(IReadOnlyList<DofusWindow> current)
-    {
-        var connectedHandles = Characters
-            .Where(c => c.IsConnected)
-            .Select(c => c.Handle)
-            .ToHashSet();
-        return current.Any(w => !connectedHandles.Contains(w.Handle));
     }
 
     /// <summary>
