@@ -328,10 +328,18 @@ public class PushToBroadcastService : IPushToBroadcastService
             {
                 var x = hookStruct->pt.X;
                 var y = hookStruct->pt.Y;
-                var foregroundHandle = _windowHelper.GetForegroundWindow();
-                Logger.Information("[HOOK] Dispatching broadcast: screen=({X},{Y}) foreground={Foreground}",
-                    x, y, foregroundHandle);
-                Task.Run(() => ProcessMouseClick(x, y, foregroundHandle));
+                // WindowFromPoint est plus fiable que GetForegroundWindow quand le clic
+                // arrive depuis une app externe (le foreground n'a pas encore changé).
+                // Mais WindowFromPoint peut retourner un child/overlay qui ne matche pas
+                // la liste Dofus → fallback sur GetForegroundWindow dans ce cas.
+                var pointHandle = _windowHelper.GetWindowFromPoint(x, y);
+                var windows = _dofusWindows;
+                var sourceHandle = windows.Any(w => w.Handle == pointHandle)
+                    ? pointHandle
+                    : _windowHelper.GetForegroundWindow();
+                Logger.Information("[HOOK] Dispatching broadcast: screen=({X},{Y}) pointHandle={PointHandle} sourceHandle={Source}",
+                    x, y, pointHandle, sourceHandle);
+                Task.Run(() => ProcessMouseClick(x, y, sourceHandle));
             }
         }
 

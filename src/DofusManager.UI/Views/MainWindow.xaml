@@ -9,6 +9,7 @@
         Icon="/Assets/app.ico">
 
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <!-- Style pour les headers de GroupBox avec icône -->
         <Style x:Key="GroupHeaderStyle" TargetType="StackPanel">
             <Setter Property="Orientation" Value="Horizontal" />
@@ -189,6 +190,17 @@
                                   IsChecked="{Binding PasteToChatDoubleEnter}"
                                   Margin="165,2,0,2"
                                   ToolTip="Envoie un 2e ENTRÉE pour valider les actions qui nécessitent une confirmation." />
+                        <StackPanel Orientation="Horizontal" Margin="165,2,0,2"
+                                    Visibility="{Binding PasteToChatDoubleEnter, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock Text="Délai double entrée :" VerticalAlignment="Center" />
+                            <Slider Value="{Binding PasteToChatDoubleEnterDelayMs}" Minimum="200" Maximum="1500"
+                                    Width="150" Margin="8,0,0,0" VerticalAlignment="Center"
+                                    TickFrequency="50" IsSnapToTickEnabled="True" />
+                            <TextBlock VerticalAlignment="Center" Margin="6,0,0,0">
+                                <Run Text="{Binding PasteToChatDoubleEnterDelayMs, Mode=OneWay}" />
+                                <Run Text="ms" />
+                            </TextBlock>
+                        </StackPanel>
                     </StackPanel>
                 </GroupBox>
 

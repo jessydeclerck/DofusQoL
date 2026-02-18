@@ -56,6 +56,11 @@ public class GlobalHotkeyConfig
     /// </summary>
     public bool PasteToChatDoubleEnter { get; set; }
 
+    /// <summary>
+    /// Délai (ms) entre le 1er et le 2e ENTER lors du collage avec double entrée.
+    /// </summary>
+    public int PasteToChatDoubleEnterDelayMs { get; set; } = 500;
+
     private const uint VK_TAB = 0x09;
     private const uint VK_MENU = 0x12;
     private const uint VK_OEM_3 = 0xC0; // touche ` (backtick)

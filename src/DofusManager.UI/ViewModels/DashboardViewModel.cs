@@ -103,6 +103,9 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _pasteToChatDoubleEnter;
 
+    [ObservableProperty]
+    private int _pasteToChatDoubleEnterDelayMs = 500;
+
     public string PushToBroadcastButtonText => IsListening ? "Désactiver" : "Activer";
     public string PushToBroadcastIndicator => IsArmed
         ? $"{BroadcastKeyDisplay} maintenu"
@@ -130,6 +133,11 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     }
 
     partial void OnPasteToChatDoubleEnterChanged(bool value)
+    {
+        UpdateSessionSnapshot();
+    }
+
+    partial void OnPasteToChatDoubleEnterDelayMsChanged(int value)
     {
         UpdateSessionSnapshot();
     }
@@ -258,6 +266,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             BroadcastDelayRandomMs = appState.LastHotkeyConfig.BroadcastDelayRandomMs;
             _pushToBroadcastService.BroadcastDelayRandomMs = BroadcastDelayRandomMs;
             PasteToChatDoubleEnter = appState.LastHotkeyConfig.PasteToChatDoubleEnter;
+            PasteToChatDoubleEnterDelayMs = appState.LastHotkeyConfig.PasteToChatDoubleEnterDelayMs;
             if (HotkeysActive) RegisterAllHotkeys();
         }
 
@@ -617,6 +626,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         BroadcastDelayRandomMs = 25;
         _pushToBroadcastService.BroadcastDelayRandomMs = 25;
         PasteToChatDoubleEnter = false;
+        PasteToChatDoubleEnterDelayMs = 500;
 
         if (HotkeysActive) RegisterAllHotkeys();
         _activeProfileName = null;
@@ -907,6 +917,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 BroadcastDelayRandomMs = _sessionSnapshot.GlobalHotkeys.BroadcastDelayRandomMs;
                 _pushToBroadcastService.BroadcastDelayRandomMs = BroadcastDelayRandomMs;
                 PasteToChatDoubleEnter = _sessionSnapshot.GlobalHotkeys.PasteToChatDoubleEnter;
+                PasteToChatDoubleEnterDelayMs = _sessionSnapshot.GlobalHotkeys.PasteToChatDoubleEnterDelayMs;
 
                 if (HotkeysActive)
                     RegisterAllHotkeys();
@@ -1077,11 +1088,28 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             if (e.Binding.Action == HotkeyAction.PasteToChat)
             {
                 StatusText = "Collage dans le chat en cours...";
+                // Capturer la fenêtre sous le curseur MAINTENANT (thread UI)
+                // WindowFromPoint peut retourner un child/overlay → fallback GetForegroundWindow
+                var allWindows = _detectionService.DetectedWindows;
+                var cursorPos = _windowHelper.GetCursorPos();
+                var pointHandle = cursorPos is not null
+                    ? _windowHelper.GetWindowFromPoint(cursorPos.Value.X, cursorPos.Value.Y)
+                    : (nint)0;
+                var targetHandle = allWindows.Any(w => w.Handle == pointHandle)
+                    ? pointHandle
+                    : _windowHelper.GetForegroundWindow();
                 _ = Task.Run(async () =>
                 {
-                    var windows = _detectionService.DetectedWindows;
+                    // Trouver la fenêtre Dofus sous le curseur
+                    var targetWindow = allWindows.FirstOrDefault(w => w.Handle == targetHandle);
+                    if (targetWindow is null)
+                    {
+                        _dispatcher.Invoke(() => StatusText = "Aucune fenêtre Dofus sous le curseur");
+                        return;
+                    }
+                    var windows = new[] { targetWindow };
                     var leader = _focusService.CurrentLeader;
-                    var result = await _groupInviteService.PasteToChatAsync(windows, leader, PasteToChatDoubleEnter);
+                    var result = await _groupInviteService.PasteToChatAsync(windows, leader, PasteToChatDoubleEnter, PasteToChatDoubleEnterDelayMs);
                     _dispatcher.Invoke(() =>
                     {
                         StatusText = result.Success
@@ -1256,7 +1284,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 ReturnToLeaderAfterBroadcast = ReturnToLeaderAfterBroadcast,
                 BroadcastDelayMs = BroadcastDelayMs,
                 BroadcastDelayRandomMs = BroadcastDelayRandomMs,
-                PasteToChatDoubleEnter = PasteToChatDoubleEnter
+                PasteToChatDoubleEnter = PasteToChatDoubleEnter,
+                PasteToChatDoubleEnterDelayMs = PasteToChatDoubleEnterDelayMs
             };
         }
 
@@ -1361,6 +1390,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             BroadcastDelayRandomMs = profile.GlobalHotkeys.BroadcastDelayRandomMs;
             _pushToBroadcastService.BroadcastDelayRandomMs = BroadcastDelayRandomMs;
             PasteToChatDoubleEnter = profile.GlobalHotkeys.PasteToChatDoubleEnter;
+            PasteToChatDoubleEnterDelayMs = profile.GlobalHotkeys.PasteToChatDoubleEnterDelayMs;
 
             if (HotkeysActive)
                 RegisterAllHotkeys();

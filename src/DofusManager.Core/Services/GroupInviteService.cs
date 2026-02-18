@@ -162,7 +162,7 @@ public class GroupInviteService : IGroupInviteService
     }
 
     public async Task<GroupInviteResult> PasteToChatAsync(
-        IReadOnlyList<DofusWindow> windows, DofusWindow? leader, bool doubleEnter = false)
+        IReadOnlyList<DofusWindow> windows, DofusWindow? leader, bool doubleEnter = false, int doubleEnterDelayMs = 500)
     {
         if (windows.Count == 0)
             return new GroupInviteResult { Success = false, ErrorMessage = "Aucune fenêtre" };
@@ -188,7 +188,7 @@ public class GroupInviteService : IGroupInviteService
 
             // ENTRÉE → envoie le message
             _windowHelper.SendKeyPress(VK_RETURN);
-            await Task.Delay(200);
+            await Task.Delay(doubleEnter ? doubleEnterDelayMs : 200);
 
             // 2e ENTRÉE pour confirmer (ex: actions nécessitant validation)
             if (doubleEnter)
