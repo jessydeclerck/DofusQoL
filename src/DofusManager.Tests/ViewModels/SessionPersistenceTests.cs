@@ -241,6 +241,42 @@ public class SessionPersistenceTests : IDisposable
     }
 
     [Fact]
+    public async Task MoveCharacter_PreservesHotkeysOnCharacters()
+    {
+        var snapshot = CreateSnapshot("Cuckoolo", "Artega");
+        var windows = CreateWindows("Cuckoolo", "Artega");
+
+        await SetupSnapshotAndRestore(snapshot, windows);
+
+        // Configurer des hotkeys custom sur chaque personnage
+        // Cuckoolo (slot 0) : Ctrl+1
+        _vm.Characters[0].HotkeyModifiers = 0x0002; // MOD_CONTROL
+        _vm.Characters[0].VirtualKeyCode = 0x31;     // VK_1
+        _vm.Characters[0].HotkeyDisplay = "Ctrl+1";
+
+        // Artega (slot 1) : Ctrl+2
+        _vm.Characters[1].HotkeyModifiers = 0x0002;
+        _vm.Characters[1].VirtualKeyCode = 0x32;     // VK_2
+        _vm.Characters[1].HotkeyDisplay = "Ctrl+2";
+
+        // Déplacer Cuckoolo du slot 0 au slot 1
+        _vm.MoveCharacter(0, 1);
+
+        // Artega est maintenant en slot 0, Cuckoolo en slot 1
+        Assert.Contains("Artega", _vm.Characters[0].Title);
+        Assert.Contains("Cuckoolo", _vm.Characters[1].Title);
+
+        // Les hotkeys doivent suivre le personnage, pas le slot
+        Assert.Equal(0x0002u, _vm.Characters[0].HotkeyModifiers); // Artega garde Ctrl+2
+        Assert.Equal(0x32u, _vm.Characters[0].VirtualKeyCode);
+        Assert.Equal("Ctrl+2", _vm.Characters[0].HotkeyDisplay);
+
+        Assert.Equal(0x0002u, _vm.Characters[1].HotkeyModifiers); // Cuckoolo garde Ctrl+1
+        Assert.Equal(0x31u, _vm.Characters[1].VirtualKeyCode);
+        Assert.Equal("Ctrl+1", _vm.Characters[1].HotkeyDisplay);
+    }
+
+    [Fact]
     public async Task ToggleLeader_UpdatesSnapshotAndTriggersAutoSave()
     {
         var snapshot = CreateSnapshot("Cuckoolo", "Artega");

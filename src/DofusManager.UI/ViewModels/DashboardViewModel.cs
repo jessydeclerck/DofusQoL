@@ -513,19 +513,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private void ReindexSlots()
     {
         for (var i = 0; i < Characters.Count; i++)
-        {
-            var c = Characters[i];
-            c.SlotIndex = i;
-
-            // Réassigner le hotkey par défaut si le slot n'a pas de hotkey custom
-            var def = HotkeyDefaults.GetDefaultSlotHotkey(i);
-            if (def.HasValue && c.VirtualKeyCode >= VK_F1 && c.VirtualKeyCode <= VK_F1 + 7)
-            {
-                c.HotkeyModifiers = (uint)def.Value.Modifiers;
-                c.VirtualKeyCode = def.Value.VirtualKeyCode;
-                c.HotkeyDisplay = def.Value.DisplayName;
-            }
-        }
+            Characters[i].SlotIndex = i;
     }
 
     // ===== PROFILS =====
