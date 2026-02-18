@@ -186,6 +186,23 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        <Grid Margin="5,6,5,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="160" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" Text="Touche ouvrir chat"
+                                       VerticalAlignment="Center"
+                                       ToolTip="Touche configurée dans Dofus pour ouvrir le chat. Par défaut : Espace." />
+                            <controls:HotkeyCaptureBox Grid.Column="1"
+                                SingleKeyMode="True"
+                                VirtualKeyCode="{Binding ChatOpenKeyVirtualKeyCode, Mode=TwoWay}"
+                                HotkeyDisplay="{Binding ChatOpenKeyDisplay, Mode=TwoWay}"
+                                VerticalContentAlignment="Center" MaxWidth="200"
+                                HorizontalAlignment="Left"
+                                ToolTip="Touche configurée dans Dofus pour ouvrir le chat. Par défaut : Espace." />
+                        </Grid>
                         <CheckBox Content="Toujours coller dans le leader"
                                   IsChecked="{Binding PasteToChatAlwaysLeader}"
                                   Margin="165,2,0,2"

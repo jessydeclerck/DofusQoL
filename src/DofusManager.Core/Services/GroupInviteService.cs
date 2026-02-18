@@ -19,6 +19,8 @@ public class GroupInviteService : IGroupInviteService
 
     private readonly IWin32WindowHelper _windowHelper;
 
+    public ushort ChatOpenKeyCode { get; set; } = VK_SPACE;
+
     public GroupInviteService(IWin32WindowHelper windowHelper)
     {
         _windowHelper = windowHelper;
@@ -84,8 +86,8 @@ public class GroupInviteService : IGroupInviteService
 
             Logger.Information("[GROUP-INVITE] /invite {Name}", name);
 
-            // ESPACE pour ouvrir le chat
-            _windowHelper.SendKeyPress(VK_SPACE);
+            // Touche configurable pour ouvrir le chat
+            _windowHelper.SendKeyPress(ChatOpenKeyCode);
             await Task.Delay(50);
 
             // Taper /invite <nom>
@@ -178,8 +180,8 @@ public class GroupInviteService : IGroupInviteService
                 continue;
             }
 
-            // ESPACE → ouvre le chat
-            _windowHelper.SendKeyPress(VK_SPACE);
+            // Touche configurable → ouvre le chat
+            _windowHelper.SendKeyPress(ChatOpenKeyCode);
             await Task.Delay(50);
 
             // Ctrl+V → colle le contenu du presse-papier
