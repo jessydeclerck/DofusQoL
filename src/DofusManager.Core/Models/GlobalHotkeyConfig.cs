@@ -61,6 +61,11 @@ public class GlobalHotkeyConfig
     /// </summary>
     public int PasteToChatDoubleEnterDelayMs { get; set; } = 500;
 
+    /// <summary>
+    /// Si true, le collage se fait toujours dans la fenêtre du leader (au lieu de la fenêtre sous le curseur).
+    /// </summary>
+    public bool PasteToChatAlwaysLeader { get; set; }
+
     private const uint VK_TAB = 0x09;
     private const uint VK_MENU = 0x12;
     private const uint VK_OEM_3 = 0xC0; // touche ` (backtick)
