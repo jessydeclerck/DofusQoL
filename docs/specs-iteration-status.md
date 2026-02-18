@@ -140,6 +140,14 @@
 - [x] **Double Entrée pour PasteToChat** — `GlobalHotkeyConfig.PasteToChatDoubleEnter`, paramètre `doubleEnter` dans `PasteToChatAsync`, CheckBox UI, persisté dans profils
 - [x] Tests unitaires (6 nouveaux : BroadcastDelayRandomMs 3 + IsMouseButton VK_MBUTTON 1 + PasteToChat DoubleEnter 2) — total 271
 
+## Fix : Broadcast + PasteToChat — détection fenêtre sous le curseur
+- [x] **NativeMethods.txt** — ajout `WindowFromPoint`, `GetAncestor`
+- [x] **IWin32WindowHelper + WindowHelper** — `GetWindowFromPoint(screenX, screenY)` via CsWin32 (`WindowFromPoint` + `GetAncestor(GA_ROOT)`)
+- [x] **PushToBroadcastService.HookCallback** — remplacé `GetForegroundWindow()` par `GetWindowFromPoint(x, y)` pour détecter la fenêtre sous le curseur (corrige broadcast après focus sur app externe)
+- [x] **DashboardViewModel.OnHotkeyPressed PasteToChat** — capture `GetCursorPos()` + `GetWindowFromPoint()` sur le thread UI, ne colle que dans la fenêtre Dofus survolée (au lieu de toutes)
+- [x] **PushToBroadcastServiceTests** — mock `GetWindowFromPoint` par défaut dans le constructeur
+- [x] Build OK (Core + Tests), 271 tests passent
+
 ## Itération 5 — Session manager (F5)
 - À planifier
 

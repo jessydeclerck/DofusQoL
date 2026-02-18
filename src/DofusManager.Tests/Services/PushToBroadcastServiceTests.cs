@@ -19,6 +19,7 @@ public class PushToBroadcastServiceTests : IDisposable
         _mockHelper.Setup(h => h.SendMouseClick()).Returns(true);
         _mockHelper.Setup(h => h.SendMouseUp()).Returns(true);
         _mockHelper.Setup(h => h.GetCursorPos()).Returns((500, 300));
+        _mockHelper.Setup(h => h.GetWindowFromPoint(It.IsAny<int>(), It.IsAny<int>())).Returns((nint)0);
 
         // Simuler que FocusWindow change le foreground : GetForegroundWindow
         // retourne le dernier handle passé à FocusWindow

@@ -8,7 +8,7 @@ public interface IGroupInviteService
 
     Task<GroupInviteResult> ToggleAutoFollowAsync(IReadOnlyList<DofusWindow> windows, DofusWindow leader);
 
-    Task<GroupInviteResult> PasteToChatAsync(IReadOnlyList<DofusWindow> windows, DofusWindow? leader, bool doubleEnter = false);
+    Task<GroupInviteResult> PasteToChatAsync(IReadOnlyList<DofusWindow> windows, DofusWindow? leader, bool doubleEnter = false, int doubleEnterDelayMs = 500);
 
     static string ExtractCharacterName(string title)
     {

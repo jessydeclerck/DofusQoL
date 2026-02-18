@@ -103,4 +103,9 @@ public interface IWin32WindowHelper
     /// Injecte un raccourci clavier (modifier down → touche down+up → modifier up) via scan codes.
     /// </summary>
     bool SendKeyCombination(ushort modifierVk, ushort keyVk);
+
+    /// <summary>
+    /// Retourne le handle de la fenêtre top-level aux coordonnées écran données.
+    /// </summary>
+    nint GetWindowFromPoint(int screenX, int screenY);
 }

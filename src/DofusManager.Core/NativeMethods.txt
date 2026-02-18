@@ -30,3 +30,5 @@ SetCursorPos
 SendInput
 INPUT
 MapVirtualKey
+WindowFromPoint
+GetAncestor

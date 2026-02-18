@@ -326,6 +326,16 @@ public class WindowHelper : IWin32WindowHelper
         return true;
     }
 
+    public nint GetWindowFromPoint(int screenX, int screenY)
+    {
+        var point = new System.Drawing.Point(screenX, screenY);
+        var hwnd = PInvoke.WindowFromPoint(point);
+        if (hwnd.IsNull) return 0;
+
+        var root = PInvoke.GetAncestor(hwnd, GET_ANCESTOR_FLAGS.GA_ROOT);
+        return root.IsNull ? hwnd.Value : root.Value;
+    }
+
     public unsafe bool SendKeyCombination(ushort modifierVk, ushort keyVk)
     {
         var modScan = PInvoke.MapVirtualKey(modifierVk, Windows.Win32.UI.Input.KeyboardAndMouse.MAP_VIRTUAL_KEY_TYPE.MAPVK_VK_TO_VSC);
