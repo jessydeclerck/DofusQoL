@@ -91,6 +91,18 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     [NotifyPropertyChangedFor(nameof(BroadcastKeyHelpText))]
     private string _broadcastKeyDisplay = "Alt";
 
+    [ObservableProperty]
+    private bool _returnToLeaderAfterBroadcast;
+
+    [ObservableProperty]
+    private int _broadcastDelayMs = 65;
+
+    [ObservableProperty]
+    private int _broadcastDelayRandomMs = 25;
+
+    [ObservableProperty]
+    private bool _pasteToChatDoubleEnter;
+
     public string PushToBroadcastButtonText => IsListening ? "Désactiver" : "Activer";
     public string PushToBroadcastIndicator => IsArmed
         ? $"{BroadcastKeyDisplay} maintenu"
@@ -98,6 +110,29 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             ? $"En attente de {BroadcastKeyDisplay}"
             : "Inactif";
     public string BroadcastKeyHelpText => $"Maintenez {BroadcastKeyDisplay} : chaque clic est broadcasté.";
+
+    partial void OnReturnToLeaderAfterBroadcastChanged(bool value)
+    {
+        _pushToBroadcastService.ReturnToLeaderAfterBroadcast = value;
+        UpdateSessionSnapshot();
+    }
+
+    partial void OnBroadcastDelayMsChanged(int value)
+    {
+        _pushToBroadcastService.BroadcastDelayMs = value;
+        UpdateSessionSnapshot();
+    }
+
+    partial void OnBroadcastDelayRandomMsChanged(int value)
+    {
+        _pushToBroadcastService.BroadcastDelayRandomMs = value;
+        UpdateSessionSnapshot();
+    }
+
+    partial void OnPasteToChatDoubleEnterChanged(bool value)
+    {
+        UpdateSessionSnapshot();
+    }
 
     // --- Profils ---
 
@@ -115,6 +150,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _isTopmost;
+
+    partial void OnIsTopmostChanged(bool value) => ScheduleAutoSave();
 
     // --- Status ---
 
@@ -200,6 +237,9 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     private async Task RestoreSessionStateAsync(AppState appState)
     {
+        // Restaurer la préférence Topmost
+        IsTopmost = appState.IsTopmost;
+
         // Restaurer le snapshot de session (inclut ordre slots, leader, hotkeys)
         var snapshot = appState.SessionSnapshot;
         if (snapshot is not null)
@@ -211,6 +251,13 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             // Backward compat : ancien format sans snapshot — appliquer les hotkeys
             InitializeGlobalHotkeys(appState.LastHotkeyConfig);
             InitializeBroadcastKey(appState.LastHotkeyConfig.BroadcastKey);
+            ReturnToLeaderAfterBroadcast = appState.LastHotkeyConfig.ReturnToLeaderAfterBroadcast;
+            _pushToBroadcastService.ReturnToLeaderAfterBroadcast = ReturnToLeaderAfterBroadcast;
+            BroadcastDelayMs = appState.LastHotkeyConfig.BroadcastDelayMs;
+            _pushToBroadcastService.BroadcastDelayMs = BroadcastDelayMs;
+            BroadcastDelayRandomMs = appState.LastHotkeyConfig.BroadcastDelayRandomMs;
+            _pushToBroadcastService.BroadcastDelayRandomMs = BroadcastDelayRandomMs;
+            PasteToChatDoubleEnter = appState.LastHotkeyConfig.PasteToChatDoubleEnter;
             if (HotkeysActive) RegisterAllHotkeys();
         }
 
@@ -275,7 +322,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             var state = new AppState
             {
                 ActiveProfileName = _activeProfileName,
-                SessionSnapshot = snapshot
+                SessionSnapshot = snapshot,
+                IsTopmost = IsTopmost
             };
             await _appStateService.SaveAsync(state);
         }
@@ -438,6 +486,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
         row.IsLeader = true;
         _focusService.SetLeader(row.Handle);
+        _pushToBroadcastService.LeaderHandle = row.Handle;
         UpdateSessionSnapshot();
         StatusText = $"Leader : {row.DisplayName}";
         Logger.Information("Leader défini : {DisplayName}", row.DisplayName);
@@ -561,6 +610,13 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         var defaults = GlobalHotkeyConfig.CreateDefault();
         InitializeGlobalHotkeys(defaults);
         InitializeBroadcastKey(defaults.BroadcastKey);
+        ReturnToLeaderAfterBroadcast = false;
+        _pushToBroadcastService.ReturnToLeaderAfterBroadcast = false;
+        BroadcastDelayMs = 65;
+        _pushToBroadcastService.BroadcastDelayMs = 65;
+        BroadcastDelayRandomMs = 25;
+        _pushToBroadcastService.BroadcastDelayRandomMs = 25;
+        PasteToChatDoubleEnter = false;
 
         if (HotkeysActive) RegisterAllHotkeys();
         _activeProfileName = null;
@@ -616,6 +672,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             var windows = _detectionService.DetectedWindows;
             if (windows.Count == 0) return;
 
+            _pushToBroadcastService.LeaderHandle = _focusService.CurrentLeader?.Handle;
             _pushToBroadcastService.Arm(windows);
             IsArmed = true;
             StatusText = $"Push-to-Broadcast ARMÉ ({windows.Count} fenêtres)";
@@ -836,10 +893,20 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 // Phase 3 : Mettre à jour FocusService, leader, hotkeys
                 _focusService.UpdateSlots(GetCurrentDofusWindows());
                 if (leaderHandle != 0)
+                {
                     _focusService.SetLeader(leaderHandle);
+                    _pushToBroadcastService.LeaderHandle = leaderHandle;
+                }
 
                 InitializeGlobalHotkeys(_sessionSnapshot.GlobalHotkeys);
                 InitializeBroadcastKey(_sessionSnapshot.GlobalHotkeys.BroadcastKey);
+                ReturnToLeaderAfterBroadcast = _sessionSnapshot.GlobalHotkeys.ReturnToLeaderAfterBroadcast;
+                _pushToBroadcastService.ReturnToLeaderAfterBroadcast = ReturnToLeaderAfterBroadcast;
+                BroadcastDelayMs = _sessionSnapshot.GlobalHotkeys.BroadcastDelayMs;
+                _pushToBroadcastService.BroadcastDelayMs = BroadcastDelayMs;
+                BroadcastDelayRandomMs = _sessionSnapshot.GlobalHotkeys.BroadcastDelayRandomMs;
+                _pushToBroadcastService.BroadcastDelayRandomMs = BroadcastDelayRandomMs;
+                PasteToChatDoubleEnter = _sessionSnapshot.GlobalHotkeys.PasteToChatDoubleEnter;
 
                 if (HotkeysActive)
                     RegisterAllHotkeys();
@@ -932,7 +999,10 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         }
 
         if (leaderRow is not null)
+        {
             _focusService.SetLeader(leaderRow.Handle);
+            _pushToBroadcastService.LeaderHandle = leaderRow.Handle;
+        }
 
         var connectedCount = Characters.Count(c => c.IsConnected);
         var statusBase = $"{connectedCount} fenêtre(s) Dofus détectée(s)";
@@ -973,7 +1043,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 var state = new AppState
                 {
                     ActiveProfileName = _activeProfileName,
-                    SessionSnapshot = snapshot
+                    SessionSnapshot = snapshot,
+                    IsTopmost = IsTopmost
                 };
                 await _appStateService.SaveAsync(state);
                 Logger.Debug("Auto-save effectué");
@@ -1003,7 +1074,25 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     {
         _dispatcher.Invoke(() =>
         {
-            var result = e.Binding.Action switch
+            if (e.Binding.Action == HotkeyAction.PasteToChat)
+            {
+                StatusText = "Collage dans le chat en cours...";
+                _ = Task.Run(async () =>
+                {
+                    var windows = _detectionService.DetectedWindows;
+                    var leader = _focusService.CurrentLeader;
+                    var result = await _groupInviteService.PasteToChatAsync(windows, leader, PasteToChatDoubleEnter);
+                    _dispatcher.Invoke(() =>
+                    {
+                        StatusText = result.Success
+                            ? $"Collé dans {result.Invited} fenêtre(s)"
+                            : $"Erreur : {result.ErrorMessage}";
+                    });
+                });
+                return;
+            }
+
+            var focusResult = e.Binding.Action switch
             {
                 HotkeyAction.FocusSlot => _focusService.FocusSlot(e.Binding.SlotIndex ?? 0),
                 HotkeyAction.NextWindow => _focusService.FocusNext(),
@@ -1013,12 +1102,12 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 _ => FocusResult.Error("Action inconnue")
             };
 
-            if (result.Success)
+            if (focusResult.Success)
                 StatusText = $"{e.Binding.DisplayName} → slot {_focusService.CurrentSlotIndex}";
             else
             {
-                StatusText = $"{e.Binding.DisplayName} : {result.ErrorMessage}";
-                Logger.Warning("Focus échoué : {Action} → {Error}", e.Binding.DisplayName, result.ErrorMessage);
+                StatusText = $"{e.Binding.DisplayName} : {focusResult.ErrorMessage}";
+                Logger.Warning("Focus échoué : {Action} → {Error}", e.Binding.DisplayName, focusResult.ErrorMessage);
             }
         });
     }
@@ -1109,6 +1198,15 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             VirtualKeyCode = config.FocusLeader.VirtualKeyCode,
             HotkeyDisplay = config.FocusLeader.DisplayName
         });
+        GlobalHotkeys.Add(new GlobalHotkeyRowViewModel(this)
+        {
+            Label = "Coller dans le chat",
+            Action = HotkeyAction.PasteToChat,
+            HotkeyId = GlobalHotkeyBaseId + 4,
+            HotkeyModifiers = config.PasteToChat.Modifiers,
+            VirtualKeyCode = config.PasteToChat.VirtualKeyCode,
+            HotkeyDisplay = config.PasteToChat.DisplayName
+        });
     }
 
     /// <summary>
@@ -1140,7 +1238,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         }
 
         // Sauvegarder les raccourcis globaux + touche broadcast
-        if (GlobalHotkeys.Count == 4)
+        if (GlobalHotkeys.Count >= 5)
         {
             profile.GlobalHotkeys = new GlobalHotkeyConfig
             {
@@ -1148,12 +1246,17 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 PreviousWindow = ToBindingConfig(GlobalHotkeys[1]),
                 LastWindow = ToBindingConfig(GlobalHotkeys[2]),
                 FocusLeader = ToBindingConfig(GlobalHotkeys[3]),
+                PasteToChat = ToBindingConfig(GlobalHotkeys[4]),
                 BroadcastKey = new HotkeyBindingConfig
                 {
                     DisplayName = BroadcastKeyDisplay,
                     Modifiers = 0,
                     VirtualKeyCode = BroadcastKeyVirtualKeyCode
-                }
+                },
+                ReturnToLeaderAfterBroadcast = ReturnToLeaderAfterBroadcast,
+                BroadcastDelayMs = BroadcastDelayMs,
+                BroadcastDelayRandomMs = BroadcastDelayRandomMs,
+                PasteToChatDoubleEnter = PasteToChatDoubleEnter
             };
         }
 
@@ -1243,11 +1346,21 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             // Mettre à jour FocusService (uniquement les connectés)
             _focusService.UpdateSlots(GetCurrentDofusWindows());
             if (leaderHandle != 0)
+            {
                 _focusService.SetLeader(leaderHandle);
+                _pushToBroadcastService.LeaderHandle = leaderHandle;
+            }
 
             // Charger les raccourcis globaux + touche broadcast
             InitializeGlobalHotkeys(profile.GlobalHotkeys);
             InitializeBroadcastKey(profile.GlobalHotkeys.BroadcastKey);
+            ReturnToLeaderAfterBroadcast = profile.GlobalHotkeys.ReturnToLeaderAfterBroadcast;
+            _pushToBroadcastService.ReturnToLeaderAfterBroadcast = ReturnToLeaderAfterBroadcast;
+            BroadcastDelayMs = profile.GlobalHotkeys.BroadcastDelayMs;
+            _pushToBroadcastService.BroadcastDelayMs = BroadcastDelayMs;
+            BroadcastDelayRandomMs = profile.GlobalHotkeys.BroadcastDelayRandomMs;
+            _pushToBroadcastService.BroadcastDelayRandomMs = BroadcastDelayRandomMs;
+            PasteToChatDoubleEnter = profile.GlobalHotkeys.PasteToChatDoubleEnter;
 
             if (HotkeysActive)
                 RegisterAllHotkeys();

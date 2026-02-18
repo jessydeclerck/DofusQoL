@@ -203,4 +203,96 @@ public class HotkeyServiceTests : IDisposable
 
         Assert.Empty(_service.RegisteredHotkeys);
     }
+
+    // --- Mouse button bindings ---
+
+    [Fact]
+    public void Register_MouseBinding_DoesNotCallRegisterHotKey()
+    {
+        _service.Initialize(TestHwnd);
+
+        var binding = new HotkeyBinding
+        {
+            Id = 10,
+            Modifiers = HotkeyModifiers.None,
+            VirtualKeyCode = 0x05, // VK_XBUTTON1
+            DisplayName = "Souris 4",
+            Action = HotkeyAction.NextWindow
+        };
+
+        var result = _service.Register(binding);
+
+        Assert.True(result);
+        _mockHelper.Verify(
+            h => h.RegisterHotKey(It.IsAny<nint>(), It.IsAny<int>(), It.IsAny<uint>(), It.IsAny<uint>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public void Register_MouseBinding_AppearsInRegisteredHotkeys()
+    {
+        _service.Initialize(TestHwnd);
+
+        var binding = new HotkeyBinding
+        {
+            Id = 10,
+            Modifiers = HotkeyModifiers.None,
+            VirtualKeyCode = 0x06, // VK_XBUTTON2
+            DisplayName = "Souris 5",
+            Action = HotkeyAction.PreviousWindow
+        };
+
+        _service.Register(binding);
+
+        Assert.Single(_service.RegisteredHotkeys);
+        Assert.Equal(0x06u, _service.RegisteredHotkeys[0].VirtualKeyCode);
+    }
+
+    [Fact]
+    public void UnregisterAll_ClearsBothKeyboardAndMouseBindings()
+    {
+        _service.Initialize(TestHwnd);
+        _mockHelper.Setup(h => h.RegisterHotKey(It.IsAny<nint>(), It.IsAny<int>(), It.IsAny<uint>(), It.IsAny<uint>()))
+            .Returns(true);
+
+        // Register keyboard binding
+        _service.Register(CreateBinding(id: 1, vk: 0x70));
+
+        // Register mouse binding
+        _service.Register(new HotkeyBinding
+        {
+            Id = 10,
+            Modifiers = HotkeyModifiers.None,
+            VirtualKeyCode = 0x05,
+            DisplayName = "Souris 4",
+            Action = HotkeyAction.NextWindow
+        });
+
+        Assert.Equal(2, _service.RegisteredHotkeys.Count);
+
+        _service.UnregisterAll();
+
+        Assert.Empty(_service.RegisteredHotkeys);
+    }
+
+    [Theory]
+    [InlineData(0x04u, true)]   // VK_MBUTTON
+    [InlineData(0x05u, true)]   // VK_XBUTTON1
+    [InlineData(0x06u, true)]   // VK_XBUTTON2
+    [InlineData(0x70u, false)]  // VK_F1
+    [InlineData(0x09u, false)]  // VK_TAB
+    [InlineData(0x12u, false)]  // VK_MENU
+    public void HotkeyBinding_IsMouseButton_Theory(uint vk, bool expected)
+    {
+        var binding = new HotkeyBinding
+        {
+            Id = 1,
+            Modifiers = HotkeyModifiers.None,
+            VirtualKeyCode = vk,
+            DisplayName = "Test",
+            Action = HotkeyAction.FocusSlot
+        };
+
+        Assert.Equal(expected, binding.IsMouseButton);
+    }
 }

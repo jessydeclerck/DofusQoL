@@ -21,7 +21,10 @@ public enum HotkeyAction
     PanicLeader,
 
     /// <summary>Déclenche un broadcast d'input.</summary>
-    Broadcast
+    Broadcast,
+
+    /// <summary>Colle le contenu du presse-papier dans le chat de chaque fenêtre.</summary>
+    PasteToChat
 }
 
 /// <summary>
@@ -53,4 +56,9 @@ public class HotkeyBinding
     /// Index du slot pour l'action FocusSlot. Ignoré pour les autres actions.
     /// </summary>
     public int? SlotIndex { get; init; }
+
+    /// <summary>
+    /// True si le raccourci utilise un bouton souris (XButton1/XButton2) au lieu d'une touche clavier.
+    /// </summary>
+    public bool IsMouseButton => VirtualKeyCode is 0x04 or 0x05 or 0x06;
 }

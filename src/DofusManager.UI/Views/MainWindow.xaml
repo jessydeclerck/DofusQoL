@@ -163,27 +163,33 @@
                             <TextBlock Text="Raccourcis globaux" FontWeight="SemiBold" VerticalAlignment="Center" />
                         </StackPanel>
                     </GroupBox.Header>
-                    <ItemsControl ItemsSource="{Binding GlobalHotkeys}" Margin="5">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="0,2">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="160" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <ItemsControl ItemsSource="{Binding GlobalHotkeys}" Margin="5">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="160" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
 
-                                    <TextBlock Grid.Column="0" Text="{Binding Label}"
-                                               VerticalAlignment="Center" />
-                                    <controls:HotkeyCaptureBox Grid.Column="1"
-                                        HotkeyModifiers="{Binding HotkeyModifiers, Mode=TwoWay}"
-                                        VirtualKeyCode="{Binding VirtualKeyCode, Mode=TwoWay}"
-                                        HotkeyDisplay="{Binding HotkeyDisplay, Mode=TwoWay}"
-                                        VerticalContentAlignment="Center" MaxWidth="200"
-                                        HorizontalAlignment="Left" />
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                                        <TextBlock Grid.Column="0" Text="{Binding Label}"
+                                                   VerticalAlignment="Center" />
+                                        <controls:HotkeyCaptureBox Grid.Column="1"
+                                            HotkeyModifiers="{Binding HotkeyModifiers, Mode=TwoWay}"
+                                            VirtualKeyCode="{Binding VirtualKeyCode, Mode=TwoWay}"
+                                            HotkeyDisplay="{Binding HotkeyDisplay, Mode=TwoWay}"
+                                            VerticalContentAlignment="Center" MaxWidth="200"
+                                            HorizontalAlignment="Left" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <CheckBox Content="Double Entrée (confirmation auto)"
+                                  IsChecked="{Binding PasteToChatDoubleEnter}"
+                                  Margin="165,2,0,2"
+                                  ToolTip="Envoie un 2e ENTRÉE pour valider les actions qui nécessitent une confirmation." />
+                    </StackPanel>
                 </GroupBox>
 
                 <!-- ===== GROUPE ===== -->
@@ -273,6 +279,32 @@
                                 VerticalContentAlignment="Center" MaxWidth="200"
                                 HorizontalAlignment="Left" />
                         </Grid>
+
+                        <CheckBox Content="Retour au leader après broadcast"
+                                  IsChecked="{Binding ReturnToLeaderAfterBroadcast}"
+                                  Margin="0,6,0,0"
+                                  ToolTip="Le focus revient au leader au lieu de la fenêtre source après chaque broadcast." />
+
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <TextBlock Text="Délai entre fenêtres :" VerticalAlignment="Center" />
+                            <Slider Value="{Binding BroadcastDelayMs}" Minimum="0" Maximum="300"
+                                    Width="150" Margin="8,0,0,0" VerticalAlignment="Center"
+                                    TickFrequency="25" IsSnapToTickEnabled="True" />
+                            <TextBlock VerticalAlignment="Center" Margin="6,0,0,0">
+                                <Run Text="{Binding BroadcastDelayMs, Mode=OneWay}" />
+                                <Run Text="ms" />
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <TextBlock Text="Variation aléatoire :" VerticalAlignment="Center" />
+                            <Slider Value="{Binding BroadcastDelayRandomMs}" Minimum="0" Maximum="100"
+                                    Width="150" Margin="8,0,0,0" VerticalAlignment="Center"
+                                    TickFrequency="5" IsSnapToTickEnabled="True" />
+                            <TextBlock VerticalAlignment="Center" Margin="6,0,0,0">
+                                <Run Text="±" /><Run Text="{Binding BroadcastDelayRandomMs, Mode=OneWay}" />
+                                <Run Text="ms" />
+                            </TextBlock>
+                        </StackPanel>
                     </StackPanel>
                 </GroupBox>
 

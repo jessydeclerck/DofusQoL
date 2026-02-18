@@ -172,6 +172,65 @@ public class HotkeyCaptureBox : TextBox
         _ => (uint)KeyInterop.VirtualKeyFromKey(key)
     };
 
+    protected override void OnPreviewMouseDown(MouseButtonEventArgs e)
+    {
+        // Capturer uniquement Middle, XButton1 et XButton2
+        if (e.ChangedButton is not (MouseButton.Middle or MouseButton.XButton1 or MouseButton.XButton2))
+        {
+            base.OnPreviewMouseDown(e);
+            return;
+        }
+
+        // Seulement si on a le focus clavier (mode capture actif)
+        if (!IsKeyboardFocused)
+        {
+            base.OnPreviewMouseDown(e);
+            return;
+        }
+
+        e.Handled = true;
+
+        var vk = e.ChangedButton switch
+        {
+            MouseButton.Middle => 0x04u,
+            MouseButton.XButton1 => 0x05u,
+            _ => 0x06u // XButton2
+        };
+
+        if (SingleKeyMode)
+        {
+            HotkeyModifiers = 0;
+            VirtualKeyCode = vk;
+
+            var display = GetKeyName(vk);
+            HotkeyDisplay = display;
+            Text = display;
+
+            Keyboard.ClearFocus();
+            return;
+        }
+
+        // Mode normal : capturer avec les modifiers clavier actuels
+        var modifiers = Core.Models.HotkeyModifiers.None;
+        if ((Keyboard.Modifiers & ModifierKeys.Control) != 0)
+            modifiers |= Core.Models.HotkeyModifiers.Control;
+        if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0)
+            modifiers |= Core.Models.HotkeyModifiers.Shift;
+        if ((Keyboard.Modifiers & ModifierKeys.Alt) != 0)
+            modifiers |= Core.Models.HotkeyModifiers.Alt;
+        if ((Keyboard.Modifiers & ModifierKeys.Windows) != 0)
+            modifiers |= Core.Models.HotkeyModifiers.Win;
+
+        HotkeyModifiers = (uint)modifiers;
+        VirtualKeyCode = vk;
+
+        var display2 = FormatHotkey(modifiers, vk);
+        HotkeyDisplay = display2;
+        Text = display2;
+
+        Keyboard.ClearFocus();
+    }
+
     internal static string FormatHotkey(Core.Models.HotkeyModifiers modifiers, uint vk)
     {
         var sb = new StringBuilder();
@@ -191,6 +250,9 @@ public class HotkeyCaptureBox : TextBox
 
     internal static string GetKeyName(uint vk) => vk switch
     {
+        0x04 => "Clic molette",
+        0x05 => "Souris 4",
+        0x06 => "Souris 5",
         0x10 => "Shift",
         0x11 => "Ctrl",
         0x12 => "Alt",

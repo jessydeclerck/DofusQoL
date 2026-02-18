@@ -24,6 +24,26 @@ public interface IPushToBroadcastService : IDisposable
     bool IsArmed { get; }
 
     /// <summary>
+    /// Handle de la fenêtre du leader. Utilisé pour le retour au leader après broadcast.
+    /// </summary>
+    nint? LeaderHandle { get; set; }
+
+    /// <summary>
+    /// Si true, le focus revient au leader après chaque broadcast (au lieu de la fenêtre source).
+    /// </summary>
+    bool ReturnToLeaderAfterBroadcast { get; set; }
+
+    /// <summary>
+    /// Délai moyen (ms) entre chaque fenêtre lors du broadcast.
+    /// </summary>
+    int BroadcastDelayMs { get; set; }
+
+    /// <summary>
+    /// Variation aléatoire (±ms) appliquée au délai entre chaque fenêtre lors du broadcast.
+    /// </summary>
+    int BroadcastDelayRandomMs { get; set; }
+
+    /// <summary>
     /// Événement déclenché après chaque broadcast de clic réussi.
     /// Le paramètre indique le nombre de fenêtres atteintes.
     /// </summary>
