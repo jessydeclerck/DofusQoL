@@ -21,6 +21,12 @@ public class GlobalHotkeyConfig
     public HotkeyBindingConfig FocusLeader { get; set; } = new();
 
     /// <summary>
+    /// Raccourci pour coller le contenu du presse-papier dans le chat de chaque fenêtre.
+    /// Par défaut : clic molette (VK_MBUTTON).
+    /// </summary>
+    public HotkeyBindingConfig PasteToChat { get; set; } = new();
+
+    /// <summary>
     /// Touche à maintenir pour activer le broadcast de clics (défaut : Alt).
     /// Seul VirtualKeyCode est utilisé (pas de modifiers — c'est une touche "hold").
     /// </summary>
@@ -29,6 +35,26 @@ public class GlobalHotkeyConfig
         DisplayName = "Alt",
         VirtualKeyCode = VK_MENU
     };
+
+    /// <summary>
+    /// Si true, le focus revient au leader après chaque broadcast (au lieu de la fenêtre source).
+    /// </summary>
+    public bool ReturnToLeaderAfterBroadcast { get; set; }
+
+    /// <summary>
+    /// Délai moyen (ms) entre chaque fenêtre lors du broadcast.
+    /// </summary>
+    public int BroadcastDelayMs { get; set; } = 65;
+
+    /// <summary>
+    /// Variation aléatoire (±ms) appliquée au délai entre chaque fenêtre lors du broadcast.
+    /// </summary>
+    public int BroadcastDelayRandomMs { get; set; } = 25;
+
+    /// <summary>
+    /// Si true, un 2e ENTER est envoyé après le collage pour confirmer l'action.
+    /// </summary>
+    public bool PasteToChatDoubleEnter { get; set; }
 
     private const uint VK_TAB = 0x09;
     private const uint VK_MENU = 0x12;
@@ -60,6 +86,11 @@ public class GlobalHotkeyConfig
             DisplayName = "Ctrl+F1",
             Modifiers = (uint)HotkeyModifiers.Control,
             VirtualKeyCode = VK_F1
+        },
+        PasteToChat = new HotkeyBindingConfig
+        {
+            DisplayName = "Clic molette",
+            VirtualKeyCode = 0x04 // VK_MBUTTON
         },
         BroadcastKey = new HotkeyBindingConfig
         {

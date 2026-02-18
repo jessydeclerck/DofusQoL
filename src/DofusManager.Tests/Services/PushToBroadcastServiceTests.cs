@@ -300,4 +300,168 @@ public class PushToBroadcastServiceTests : IDisposable
 
         Assert.Equal(1, result);
     }
+
+    // --- ReturnToLeaderAfterBroadcast ---
+
+    [Fact]
+    public void ProcessMouseClick_ReturnToLeader_FocusesLeaderInsteadOfSource()
+    {
+        var windows = CreateWindows(3);
+        _service.Arm(windows);
+        _service.ReturnToLeaderAfterBroadcast = true;
+        _service.LeaderHandle = (nint)300; // fenêtre 3 = leader
+
+        _mockHelper.Setup(h => h.ScreenToClient((nint)100, It.IsAny<int>(), It.IsAny<int>())).Returns((50, 30));
+        _mockHelper.Setup(h => h.ClientToScreen((nint)200, 50, 30)).Returns((550, 330));
+        _mockHelper.Setup(h => h.ClientToScreen((nint)300, 50, 30)).Returns((600, 360));
+
+        _service.ProcessMouseClick(500, 300, (nint)100);
+
+        // Le dernier FocusWindow doit être le leader (300), pas la source (100)
+        var focusCalls = new List<nint>();
+        _mockHelper.Setup(h => h.FocusWindow(It.IsAny<nint>()))
+            .Callback<nint>(handle => focusCalls.Add(handle))
+            .Returns(true);
+
+        // Re-vérifier : le focus final doit être sur le leader
+        // On vérifie que FocusWindow(300) a été appelé en dernier (restauration)
+        // via GetForegroundWindow qui retourne le dernier handle focusé
+        var foreground = _mockHelper.Object.GetForegroundWindow();
+        Assert.Equal((nint)300, foreground);
+    }
+
+    [Fact]
+    public void ProcessMouseClick_ReturnToLeader_NoLeaderHandle_FallsBackToSource()
+    {
+        var windows = CreateWindows(2);
+        _service.Arm(windows);
+        _service.ReturnToLeaderAfterBroadcast = true;
+        _service.LeaderHandle = null;
+
+        _mockHelper.Setup(h => h.ScreenToClient((nint)100, It.IsAny<int>(), It.IsAny<int>())).Returns((50, 30));
+        _mockHelper.Setup(h => h.ClientToScreen((nint)200, 50, 30)).Returns((550, 330));
+
+        _service.ProcessMouseClick(500, 300, (nint)100);
+
+        // Le focus final doit être sur la source (100) car pas de leader
+        var foreground = _mockHelper.Object.GetForegroundWindow();
+        Assert.Equal((nint)100, foreground);
+    }
+
+    [Fact]
+    public void ProcessMouseClick_ReturnToLeader_InvalidLeader_FallsBackToSource()
+    {
+        var windows = CreateWindows(2);
+        _service.Arm(windows);
+        _service.ReturnToLeaderAfterBroadcast = true;
+        _service.LeaderHandle = (nint)999; // handle pas dans la liste
+
+        _mockHelper.Setup(h => h.ScreenToClient((nint)100, It.IsAny<int>(), It.IsAny<int>())).Returns((50, 30));
+        _mockHelper.Setup(h => h.ClientToScreen((nint)200, 50, 30)).Returns((550, 330));
+
+        _service.ProcessMouseClick(500, 300, (nint)100);
+
+        // Le focus final doit être sur la source (100) car leader invalide
+        var foreground = _mockHelper.Object.GetForegroundWindow();
+        Assert.Equal((nint)100, foreground);
+    }
+
+    [Fact]
+    public void ProcessMouseClick_ReturnToLeaderDisabled_FocusesSourceEvenWithLeader()
+    {
+        var windows = CreateWindows(3);
+        _service.Arm(windows);
+        _service.ReturnToLeaderAfterBroadcast = false;
+        _service.LeaderHandle = (nint)300;
+
+        _mockHelper.Setup(h => h.ScreenToClient((nint)100, It.IsAny<int>(), It.IsAny<int>())).Returns((50, 30));
+        _mockHelper.Setup(h => h.ClientToScreen((nint)200, 50, 30)).Returns((550, 330));
+        _mockHelper.Setup(h => h.ClientToScreen((nint)300, 50, 30)).Returns((600, 360));
+
+        _service.ProcessMouseClick(500, 300, (nint)100);
+
+        // Le focus final doit être sur la source (100) car option désactivée
+        var foreground = _mockHelper.Object.GetForegroundWindow();
+        Assert.Equal((nint)100, foreground);
+    }
+
+    // --- BroadcastDelayMs ---
+
+    [Fact]
+    public void BroadcastDelayMs_DefaultIs65()
+    {
+        Assert.Equal(65, _service.BroadcastDelayMs);
+    }
+
+    [Fact]
+    public void BroadcastDelayMs_CanBeSet()
+    {
+        _service.BroadcastDelayMs = 200;
+        Assert.Equal(200, _service.BroadcastDelayMs);
+    }
+
+    [Fact]
+    public void ProcessMouseClick_WithZeroDelay_StillBroadcasts()
+    {
+        var windows = CreateWindows(2);
+        _service.Arm(windows);
+        _service.BroadcastDelayMs = 0;
+
+        _mockHelper.Setup(h => h.ScreenToClient((nint)100, It.IsAny<int>(), It.IsAny<int>())).Returns((50, 30));
+        _mockHelper.Setup(h => h.ClientToScreen((nint)200, 50, 30)).Returns((550, 330));
+
+        var result = _service.ProcessMouseClick(500, 300, (nint)100);
+
+        Assert.Equal(1, result);
+    }
+
+    // --- BroadcastDelayRandomMs ---
+
+    [Fact]
+    public void BroadcastDelayRandomMs_DefaultIs25()
+    {
+        Assert.Equal(25, _service.BroadcastDelayRandomMs);
+    }
+
+    [Fact]
+    public void BroadcastDelayRandomMs_CanBeSet()
+    {
+        _service.BroadcastDelayRandomMs = 50;
+        Assert.Equal(50, _service.BroadcastDelayRandomMs);
+    }
+
+    [Fact]
+    public void ProcessMouseClick_WithZeroRandomDelay_StillBroadcasts()
+    {
+        var windows = CreateWindows(2);
+        _service.Arm(windows);
+        _service.BroadcastDelayRandomMs = 0;
+
+        _mockHelper.Setup(h => h.ScreenToClient((nint)100, It.IsAny<int>(), It.IsAny<int>())).Returns((50, 30));
+        _mockHelper.Setup(h => h.ClientToScreen((nint)200, 50, 30)).Returns((550, 330));
+
+        var result = _service.ProcessMouseClick(500, 300, (nint)100);
+
+        Assert.Equal(1, result);
+    }
+
+    [Fact]
+    public void ProcessMouseClick_ReturnToLeader_SourceIsLeader_SameBehavior()
+    {
+        var windows = CreateWindows(3);
+        _service.Arm(windows);
+        _service.ReturnToLeaderAfterBroadcast = true;
+        _service.LeaderHandle = (nint)100; // source = leader
+
+        _mockHelper.Setup(h => h.ScreenToClient((nint)100, It.IsAny<int>(), It.IsAny<int>())).Returns((50, 30));
+        _mockHelper.Setup(h => h.ClientToScreen((nint)200, 50, 30)).Returns((550, 330));
+        _mockHelper.Setup(h => h.ClientToScreen((nint)300, 50, 30)).Returns((600, 360));
+
+        var result = _service.ProcessMouseClick(500, 300, (nint)100);
+
+        Assert.Equal(2, result);
+        // Le focus final doit être sur le leader/source (100)
+        var foreground = _mockHelper.Object.GetForegroundWindow();
+        Assert.Equal((nint)100, foreground);
+    }
 }

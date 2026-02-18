@@ -115,6 +115,31 @@
 - [x] `InternalsVisibleTo` ajouté dans DofusManager.UI.csproj pour les tests
 - [x] Tests unitaires (5 nouveaux + 7 Theory cases : IsConnectingTitle, Merge/Snapshot/StatusText) — total 242
 
+## Option "Retour au leader après broadcast"
+- [x] `GlobalHotkeyConfig.ReturnToLeaderAfterBroadcast` — propriété bool persistée (défaut false, backward-compatible)
+- [x] `IPushToBroadcastService` — ajout `LeaderHandle` et `ReturnToLeaderAfterBroadcast`
+- [x] `PushToBroadcastService.ProcessMouseClickCore` — logique de restauration focus : leader si option activée, sinon source (avec fallback)
+- [x] `DashboardViewModel` — `[ObservableProperty]` + sync service dans ToggleLeader, OnAltPollTimerTick, MergeWindowsWithSnapshot, ApplyProfile, ResetDefaults
+- [x] `MainWindow.xaml` — CheckBox dans le GroupBox Push-to-Broadcast
+- [x] Persistance complète : snapshot, restore session, backward compat, profils
+- [x] Tests unitaires (5 nouveaux : ReturnToLeader activé, fallback sans leader, leader invalide, option désactivée, source = leader) — total 248
+
+## Améliorations UX (4 features)
+- [x] **Persistance de IsTopmost** — `AppState.IsTopmost` sauvegardé/restauré, `OnIsTopmostChanged` trigger auto-save
+- [x] **Délai broadcast configurable** — `GlobalHotkeyConfig.BroadcastDelayMs` (défaut 65ms, ±25ms randomisation), slider dans UI, sync service, persisté dans profils
+- [x] **Raccourci "Coller dans le chat"** — `HotkeyAction.PasteToChat`, `GroupInviteService.PasteToChatAsync` (ESPACE → Ctrl+V → ENTRÉE par fenêtre), 5e raccourci global configurable
+- [x] **Boutons souris comme raccourcis** — XButton1/XButton2 (VK 0x05/0x06) capturables dans `HotkeyCaptureBox.OnPreviewMouseDown`, exécutés via `WH_MOUSE_LL` hook dans `HotkeyService` (séparé du hook PushToBroadcast)
+- [x] `HotkeyBinding.IsMouseButton` — routing automatique vers mouse bindings au lieu de `RegisterHotKey`
+- [x] `GroupInviteService.FocusWithRetryAsync` — helper extrait pour réduire la duplication
+- [x] Tests unitaires (17 nouveaux : BroadcastDelay 3 + PasteToChat 6 + MouseBindings 4 + IsMouseButton 1 + HotkeyAction enum 1 + init fix 2) — total 265
+
+## Corrections post-implémentation UX
+- [x] **Variation aléatoire configurable** — `BroadcastDelayRandomMs` (défaut ±25ms) exposé dans `GlobalHotkeyConfig`, `IPushToBroadcastService`, `PushToBroadcastService`, slider UI, persisté dans profils
+- [x] **Clic molette comme touche par défaut PasteToChat** — VK_MBUTTON (0x04) supporté dans `HotkeyBinding.IsMouseButton`, `HotkeyService.MouseHookCallback` (WM_MBUTTONDOWN), `HotkeyCaptureBox` (capture + affichage), défaut dans `GlobalHotkeyConfig.CreateDefault()`
+- [x] **PasteToChat non broadcasté** — déjà OK (hook broadcast n'écoute que WM_LBUTTONDOWN, hook hotkey consomme le clic molette)
+- [x] **Double Entrée pour PasteToChat** — `GlobalHotkeyConfig.PasteToChatDoubleEnter`, paramètre `doubleEnter` dans `PasteToChatAsync`, CheckBox UI, persisté dans profils
+- [x] Tests unitaires (6 nouveaux : BroadcastDelayRandomMs 3 + IsMouseButton VK_MBUTTON 1 + PasteToChat DoubleEnter 2) — total 271
+
 ## Itération 5 — Session manager (F5)
 - À planifier
 

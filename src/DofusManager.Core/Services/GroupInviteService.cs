@@ -10,6 +10,7 @@ public class GroupInviteService : IGroupInviteService
     private const ushort VK_RETURN = 0x0D;
     private const ushort VK_SPACE = 0x20;
     private const ushort VK_CONTROL = 0x11;
+    private const ushort VK_V = 0x56;
     private const ushort VK_W = 0x57;
     private const int DelayBetweenInvites = 300;
     private const int DelayBetweenFollows = 200;
@@ -158,5 +159,67 @@ public class GroupInviteService : IGroupInviteService
         Logger.Information("[AUTOFOLLOW] {Count} fenêtre(s) toggled", toggled);
 
         return new GroupInviteResult { Invited = toggled, Success = true };
+    }
+
+    public async Task<GroupInviteResult> PasteToChatAsync(
+        IReadOnlyList<DofusWindow> windows, DofusWindow? leader, bool doubleEnter = false)
+    {
+        if (windows.Count == 0)
+            return new GroupInviteResult { Success = false, ErrorMessage = "Aucune fenêtre" };
+
+        var pasted = 0;
+
+        foreach (var window in windows)
+        {
+            var focused = await FocusWithRetryAsync(window.Handle);
+            if (!focused)
+            {
+                Logger.Warning("[PASTE-CHAT] Focus échoué pour {Handle}, skip", window.Handle);
+                continue;
+            }
+
+            // ESPACE → ouvre le chat
+            _windowHelper.SendKeyPress(VK_SPACE);
+            await Task.Delay(50);
+
+            // Ctrl+V → colle le contenu du presse-papier
+            _windowHelper.SendKeyCombination(VK_CONTROL, VK_V);
+            await Task.Delay(50);
+
+            // ENTRÉE → envoie le message
+            _windowHelper.SendKeyPress(VK_RETURN);
+            await Task.Delay(200);
+
+            // 2e ENTRÉE pour confirmer (ex: actions nécessitant validation)
+            if (doubleEnter)
+            {
+                _windowHelper.SendKeyPress(VK_RETURN);
+                await Task.Delay(200);
+            }
+
+            pasted++;
+            Logger.Information("[PASTE-CHAT] Collé dans {Handle}", window.Handle);
+        }
+
+        // Restaurer le focus au leader
+        if (leader is not null)
+            await FocusWithRetryAsync(leader.Handle);
+
+        Logger.Information("[PASTE-CHAT] {Count} fenêtre(s) collées", pasted);
+        return new GroupInviteResult { Success = true, Invited = pasted };
+    }
+
+    private async Task<bool> FocusWithRetryAsync(nint handle)
+    {
+        for (var attempt = 1; attempt <= FocusMaxRetries; attempt++)
+        {
+            _windowHelper.FocusWindow(handle);
+            await Task.Delay(FocusDelayMs);
+
+            if (_windowHelper.GetForegroundWindow() == handle)
+                return true;
+        }
+
+        return false;
     }
 }

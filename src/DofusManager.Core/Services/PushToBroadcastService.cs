@@ -45,6 +45,11 @@ public class PushToBroadcastService : IPushToBroadcastService
         get { lock (_lock) { return _isArmed; } }
     }
 
+    public nint? LeaderHandle { get; set; }
+    public bool ReturnToLeaderAfterBroadcast { get; set; }
+    public int BroadcastDelayMs { get; set; } = 65;
+    public int BroadcastDelayRandomMs { get; set; } = 25;
+
     public event EventHandler<int>? BroadcastPerformed;
 
     public PushToBroadcastService(IWin32WindowHelper windowHelper)
@@ -211,8 +216,10 @@ public class PushToBroadcastService : IPushToBroadcastService
             var clicked = _windowHelper.SendMouseClick();
             Logger.Information("[BROADCAST-TARGET #{Index}] SendMouseClick → {Result}", windowIndex, clicked);
 
-            // Délai aléatoire entre les fenêtres pour simuler un comportement humain
-            Thread.Sleep(Random.Shared.Next(ClickDelayMinMs, ClickDelayMaxMs + 1));
+            // Délai aléatoire entre les fenêtres
+            var delay = Math.Max(0, BroadcastDelayMs);
+            var random = Math.Max(0, BroadcastDelayRandomMs);
+            Thread.Sleep(Random.Shared.Next(Math.Max(0, delay - random), delay + random + 1));
 
             if (clicked) reached++;
         }
@@ -224,27 +231,43 @@ public class PushToBroadcastService : IPushToBroadcastService
             Logger.Information("[BROADCAST-RESTORE] Cursor restauré à ({X},{Y})", originalCursorPos.Value.X, originalCursorPos.Value.Y);
         }
 
-        // Restaurer la fenêtre source au premier plan (retry si nécessaire)
+        // Déterminer la fenêtre de retour : leader (si option activée) ou source
+        var restoreHandle = sourceWindow.Handle;
+        if (ReturnToLeaderAfterBroadcast && LeaderHandle is not null && LeaderHandle.Value != 0)
+        {
+            var leaderWindow = windows.FirstOrDefault(w => w.Handle == LeaderHandle.Value);
+            if (leaderWindow is not null && _windowHelper.IsWindowValid(leaderWindow.Handle))
+            {
+                restoreHandle = leaderWindow.Handle;
+                Logger.Information("[BROADCAST-RESTORE] Retour au leader (handle={Handle})", restoreHandle);
+            }
+            else
+            {
+                Logger.Warning("[BROADCAST-RESTORE] Leader invalide, retour à la source");
+            }
+        }
+
+        // Restaurer la fenêtre cible au premier plan (retry si nécessaire)
         const int maxRetries = 3;
         var finalForeground = (nint)0;
         for (var attempt = 1; attempt <= maxRetries; attempt++)
         {
-            _windowHelper.FocusWindow(sourceWindow.Handle);
+            _windowHelper.FocusWindow(restoreHandle);
             Thread.Sleep(FocusDelayMs);
 
             finalForeground = _windowHelper.GetForegroundWindow();
-            if (finalForeground == sourceWindow.Handle)
+            if (finalForeground == restoreHandle)
             {
-                Logger.Information("[BROADCAST-RESTORE] FocusWindow source → OK (tentative {Attempt})", attempt);
+                Logger.Information("[BROADCAST-RESTORE] FocusWindow → OK (tentative {Attempt})", attempt);
                 break;
             }
 
-            Logger.Warning("[BROADCAST-RESTORE] FocusWindow source raté (tentative {Attempt}/{Max}, foreground={Foreground})",
+            Logger.Warning("[BROADCAST-RESTORE] FocusWindow raté (tentative {Attempt}/{Max}, foreground={Foreground})",
                 attempt, maxRetries, finalForeground);
         }
 
-        Logger.Information("[BROADCAST-END] Foreground final : {Foreground} (source={Source}, match={Match}) — {Reached}/{Total} fenêtres",
-            finalForeground, sourceWindow.Handle, finalForeground == sourceWindow.Handle, reached, windowIndex);
+        Logger.Information("[BROADCAST-END] Foreground final : {Foreground} (restore={Restore}, match={Match}) — {Reached}/{Total} fenêtres",
+            finalForeground, restoreHandle, finalForeground == restoreHandle, reached, windowIndex);
 
         if (reached > 0)
         {

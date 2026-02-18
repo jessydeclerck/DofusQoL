@@ -18,6 +18,11 @@ public class AppState
     /// </summary>
     public Profile? SessionSnapshot { get; set; }
 
+    /// <summary>
+    /// Préférence "Toujours visible" de la fenêtre principale.
+    /// </summary>
+    public bool IsTopmost { get; set; }
+
     // Backward compat : ignoré au chargement si SessionSnapshot est présent
     public GlobalHotkeyConfig? LastHotkeyConfig { get; set; }
 }

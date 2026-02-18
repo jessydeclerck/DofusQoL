@@ -14,6 +14,7 @@ public class GroupInviteServiceTests
     private const ushort VK_RETURN = 0x0D;
     private const ushort VK_SPACE = 0x20;
     private const ushort VK_CONTROL = 0x11;
+    private const ushort VK_V = 0x56;
     private const ushort VK_W = 0x57;
 
     public GroupInviteServiceTests()
@@ -307,5 +308,134 @@ public class GroupInviteServiceTests
 
         Assert.Equal(1, result.Invited);
         _mockHelper.Verify(h => h.SendKeyCombination(VK_CONTROL, VK_W), Times.Once);
+    }
+
+    // --- PasteToChatAsync ---
+
+    [Fact]
+    public async Task PasteToChatAsync_PastesToAllWindows()
+    {
+        var windows = CreateWindows("Perso1", "Perso2", "Perso3");
+
+        var result = await _service.PasteToChatAsync(windows, windows[0]);
+
+        Assert.True(result.Success);
+        Assert.Equal(3, result.Invited);
+    }
+
+    [Fact]
+    public async Task PasteToChatAsync_SendsCorrectKeySequence()
+    {
+        var windows = CreateWindows("Perso1");
+
+        var callOrder = new List<string>();
+        _mockHelper.Setup(h => h.SendKeyPress(VK_SPACE))
+            .Callback(() => callOrder.Add("SPACE"))
+            .Returns(true);
+        _mockHelper.Setup(h => h.SendKeyCombination(VK_CONTROL, VK_V))
+            .Callback(() => callOrder.Add("CTRL+V"))
+            .Returns(true);
+        _mockHelper.Setup(h => h.SendKeyPress(VK_RETURN))
+            .Callback(() => callOrder.Add("ENTER"))
+            .Returns(true);
+
+        await _service.PasteToChatAsync(windows, null);
+
+        Assert.Equal(3, callOrder.Count);
+        Assert.Equal("SPACE", callOrder[0]);
+        Assert.Equal("CTRL+V", callOrder[1]);
+        Assert.Equal("ENTER", callOrder[2]);
+    }
+
+    [Fact]
+    public async Task PasteToChatAsync_EmptyWindows_ReturnsFailure()
+    {
+        var result = await _service.PasteToChatAsync(new List<DofusWindow>(), null);
+
+        Assert.False(result.Success);
+        Assert.Contains("Aucune fenêtre", result.ErrorMessage!);
+    }
+
+    [Fact]
+    public async Task PasteToChatAsync_RestoresFocusToLeader()
+    {
+        var windows = CreateWindows("Perso1", "Perso2");
+        var leader = windows[0];
+
+        await _service.PasteToChatAsync(windows, leader);
+
+        // Le dernier FocusWindow doit être le leader
+        var calls = _mockHelper.Invocations
+            .Where(i => i.Method.Name == "FocusWindow")
+            .Select(i => (nint)i.Arguments[0])
+            .ToList();
+
+        Assert.Equal(leader.Handle, calls[^1]);
+    }
+
+    [Fact]
+    public async Task PasteToChatAsync_NullLeader_SkipsRestore()
+    {
+        var windows = CreateWindows("Perso1");
+
+        var result = await _service.PasteToChatAsync(windows, null);
+
+        Assert.True(result.Success);
+        Assert.Equal(1, result.Invited);
+        // FocusWindow called only for the window, not for restore
+        _mockHelper.Verify(h => h.FocusWindow((nint)100), Times.Once);
+    }
+
+    [Fact]
+    public async Task PasteToChatAsync_DoubleEnter_SendsTwoEnterKeys()
+    {
+        var windows = CreateWindows("Perso1");
+
+        var enterCount = 0;
+        _mockHelper.Setup(h => h.SendKeyPress(VK_RETURN))
+            .Callback(() => enterCount++)
+            .Returns(true);
+
+        await _service.PasteToChatAsync(windows, null, doubleEnter: true);
+
+        // 2 ENTER : un pour envoyer, un pour confirmer
+        Assert.Equal(2, enterCount);
+    }
+
+    [Fact]
+    public async Task PasteToChatAsync_NoDoubleEnter_SendsOneEnterKey()
+    {
+        var windows = CreateWindows("Perso1");
+
+        var enterCount = 0;
+        _mockHelper.Setup(h => h.SendKeyPress(VK_RETURN))
+            .Callback(() => enterCount++)
+            .Returns(true);
+
+        await _service.PasteToChatAsync(windows, null, doubleEnter: false);
+
+        Assert.Equal(1, enterCount);
+    }
+
+    [Fact]
+    public async Task PasteToChatAsync_SkipsWindowIfFocusFails()
+    {
+        var windows = CreateWindows("Perso1", "Perso2");
+
+        // Focus échoue pour Perso1 (100), réussit pour Perso2 (200)
+        _mockHelper.Setup(h => h.FocusWindow(It.IsAny<nint>())).Returns(true);
+        _mockHelper.Setup(h => h.GetForegroundWindow()).Returns((nint)0);
+
+        _mockHelper.Setup(h => h.FocusWindow((nint)200))
+            .Callback(() =>
+            {
+                _mockHelper.Setup(h => h.GetForegroundWindow()).Returns((nint)200);
+            })
+            .Returns(true);
+
+        var result = await _service.PasteToChatAsync(windows, null);
+
+        Assert.True(result.Success);
+        Assert.Equal(1, result.Invited);
     }
 }
