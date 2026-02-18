@@ -49,6 +49,10 @@ dotnet test src/DofusManager.Tests/
 | Logging | Serilog |
 | Tests | xUnit + Moq |
 
+## Propriété intellectuelle
+
+Les images et assets graphiques liés à Dofus sont la propriété d'[Ankama Games](https://www.ankama.com/). Ce projet n'est pas affilié à Ankama.
+
 ## Licence
 
 Usage personnel.
