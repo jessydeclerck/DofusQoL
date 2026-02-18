@@ -101,6 +101,12 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private int _broadcastDelayRandomMs = 25;
 
     [ObservableProperty]
+    private uint _chatOpenKeyVirtualKeyCode = 0x20; // VK_SPACE
+
+    [ObservableProperty]
+    private string _chatOpenKeyDisplay = "Espace";
+
+    [ObservableProperty]
     private bool _pasteToChatDoubleEnter;
 
     [ObservableProperty]
@@ -132,6 +138,19 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     partial void OnBroadcastDelayRandomMsChanged(int value)
     {
         _pushToBroadcastService.BroadcastDelayRandomMs = value;
+        UpdateSessionSnapshot();
+    }
+
+    partial void OnChatOpenKeyVirtualKeyCodeChanged(uint value)
+    {
+        if (_applyingProfile) return;
+        _groupInviteService.ChatOpenKeyCode = (ushort)value;
+        UpdateSessionSnapshot();
+    }
+
+    partial void OnChatOpenKeyDisplayChanged(string value)
+    {
+        if (_applyingProfile) return;
         UpdateSessionSnapshot();
     }
 
@@ -199,9 +218,10 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         _profileService.ProfilesChanged += OnProfilesChanged;
         _pushToBroadcastService.BroadcastPerformed += OnBroadcastPerformed;
 
-        // Initialiser les raccourcis globaux + touche broadcast avec les valeurs par défaut
+        // Initialiser les raccourcis globaux + touche broadcast + touche chat avec les valeurs par défaut
         var defaultConfig = GlobalHotkeyConfig.CreateDefault();
         InitializeGlobalHotkeys(defaultConfig);
+        InitializeChatOpenKey(defaultConfig.ChatOpenKey);
         InitializeBroadcastKey(defaultConfig.BroadcastKey);
 
         // Polling actif par défaut
@@ -266,6 +286,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         {
             // Backward compat : ancien format sans snapshot — appliquer les hotkeys
             InitializeGlobalHotkeys(appState.LastHotkeyConfig);
+            InitializeChatOpenKey(appState.LastHotkeyConfig.ChatOpenKey);
             InitializeBroadcastKey(appState.LastHotkeyConfig.BroadcastKey);
             ReturnToLeaderAfterBroadcast = appState.LastHotkeyConfig.ReturnToLeaderAfterBroadcast;
             _pushToBroadcastService.ReturnToLeaderAfterBroadcast = ReturnToLeaderAfterBroadcast;
@@ -612,9 +633,10 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             }
         }
 
-        // Reset global hotkeys + broadcast key
+        // Reset global hotkeys + chat open key + broadcast key
         var defaults = GlobalHotkeyConfig.CreateDefault();
         InitializeGlobalHotkeys(defaults);
+        InitializeChatOpenKey(defaults.ChatOpenKey);
         InitializeBroadcastKey(defaults.BroadcastKey);
         ReturnToLeaderAfterBroadcast = false;
         _pushToBroadcastService.ReturnToLeaderAfterBroadcast = false;
@@ -907,6 +929,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 }
 
                 InitializeGlobalHotkeys(_sessionSnapshot.GlobalHotkeys);
+                InitializeChatOpenKey(_sessionSnapshot.GlobalHotkeys.ChatOpenKey);
                 InitializeBroadcastKey(_sessionSnapshot.GlobalHotkeys.BroadcastKey);
                 ReturnToLeaderAfterBroadcast = _sessionSnapshot.GlobalHotkeys.ReturnToLeaderAfterBroadcast;
                 _pushToBroadcastService.ReturnToLeaderAfterBroadcast = ReturnToLeaderAfterBroadcast;
@@ -1182,6 +1205,22 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             SelectedProfile = Profiles.FirstOrDefault(p => p.ProfileName == selected);
     }
 
+    private void InitializeChatOpenKey(HotkeyBindingConfig config)
+    {
+        if (config.VirtualKeyCode != 0)
+        {
+            ChatOpenKeyVirtualKeyCode = config.VirtualKeyCode;
+            ChatOpenKeyDisplay = config.DisplayName;
+        }
+        else
+        {
+            // Fallback vers Espace si la config est vide (profil legacy)
+            ChatOpenKeyVirtualKeyCode = 0x20;
+            ChatOpenKeyDisplay = "Espace";
+        }
+        _groupInviteService.ChatOpenKeyCode = (ushort)ChatOpenKeyVirtualKeyCode;
+    }
+
     private void InitializeBroadcastKey(HotkeyBindingConfig config)
     {
         if (config.VirtualKeyCode != 0)
@@ -1285,6 +1324,12 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 LastWindow = ToBindingConfig(GlobalHotkeys[2]),
                 FocusLeader = ToBindingConfig(GlobalHotkeys[3]),
                 PasteToChat = ToBindingConfig(GlobalHotkeys[4]),
+                ChatOpenKey = new HotkeyBindingConfig
+                {
+                    DisplayName = ChatOpenKeyDisplay,
+                    Modifiers = 0,
+                    VirtualKeyCode = ChatOpenKeyVirtualKeyCode
+                },
                 BroadcastKey = new HotkeyBindingConfig
                 {
                     DisplayName = BroadcastKeyDisplay,
@@ -1391,8 +1436,9 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 _pushToBroadcastService.LeaderHandle = leaderHandle;
             }
 
-            // Charger les raccourcis globaux + touche broadcast
+            // Charger les raccourcis globaux + touche chat + touche broadcast
             InitializeGlobalHotkeys(profile.GlobalHotkeys);
+            InitializeChatOpenKey(profile.GlobalHotkeys.ChatOpenKey);
             InitializeBroadcastKey(profile.GlobalHotkeys.BroadcastKey);
             ReturnToLeaderAfterBroadcast = profile.GlobalHotkeys.ReturnToLeaderAfterBroadcast;
             _pushToBroadcastService.ReturnToLeaderAfterBroadcast = ReturnToLeaderAfterBroadcast;

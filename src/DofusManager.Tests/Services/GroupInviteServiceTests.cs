@@ -438,4 +438,67 @@ public class GroupInviteServiceTests
         Assert.True(result.Success);
         Assert.Equal(1, result.Invited);
     }
+
+    // --- ChatOpenKeyCode configurable ---
+
+    [Fact]
+    public async Task InviteAllAsync_UsesCustomChatOpenKey()
+    {
+        const ushort customKey = 0x54; // 'T'
+        _service.ChatOpenKeyCode = customKey;
+
+        var windows = CreateWindows("Leader", "Perso2");
+        var leader = windows[0];
+
+        var callOrder = new List<string>();
+        _mockHelper.Setup(h => h.SendKeyPress(customKey))
+            .Callback(() => callOrder.Add("CUSTOM"))
+            .Returns(true);
+        _mockHelper.Setup(h => h.SendKeyPress(VK_SPACE))
+            .Callback(() => callOrder.Add("SPACE"))
+            .Returns(true);
+        _mockHelper.Setup(h => h.SendKeyPress(VK_RETURN))
+            .Callback(() => callOrder.Add("ENTER"))
+            .Returns(true);
+        _mockHelper.Setup(h => h.SendText(It.IsAny<string>()))
+            .Callback<string>(text => callOrder.Add($"TEXT:{text}"))
+            .Returns(true);
+
+        await _service.InviteAllAsync(windows, leader);
+
+        // La touche custom doit être utilisée, pas SPACE
+        Assert.Equal("CUSTOM", callOrder[0]);
+        Assert.DoesNotContain("SPACE", callOrder);
+    }
+
+    [Fact]
+    public async Task PasteToChatAsync_UsesCustomChatOpenKey()
+    {
+        const ushort customKey = 0x54; // 'T'
+        _service.ChatOpenKeyCode = customKey;
+
+        var windows = CreateWindows("Perso1");
+
+        var callOrder = new List<string>();
+        _mockHelper.Setup(h => h.SendKeyPress(customKey))
+            .Callback(() => callOrder.Add("CUSTOM"))
+            .Returns(true);
+        _mockHelper.Setup(h => h.SendKeyPress(VK_SPACE))
+            .Callback(() => callOrder.Add("SPACE"))
+            .Returns(true);
+        _mockHelper.Setup(h => h.SendKeyCombination(VK_CONTROL, VK_V))
+            .Callback(() => callOrder.Add("CTRL+V"))
+            .Returns(true);
+        _mockHelper.Setup(h => h.SendKeyPress(VK_RETURN))
+            .Callback(() => callOrder.Add("ENTER"))
+            .Returns(true);
+
+        await _service.PasteToChatAsync(windows, null);
+
+        // La touche custom doit être utilisée, pas SPACE
+        Assert.Equal("CUSTOM", callOrder[0]);
+        Assert.Equal("CTRL+V", callOrder[1]);
+        Assert.Equal("ENTER", callOrder[2]);
+        Assert.DoesNotContain("SPACE", callOrder);
+    }
 }

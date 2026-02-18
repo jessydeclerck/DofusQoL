@@ -27,6 +27,16 @@ public class GlobalHotkeyConfig
     public HotkeyBindingConfig PasteToChat { get; set; } = new();
 
     /// <summary>
+    /// Touche configurée dans Dofus pour ouvrir le chat (défaut : Espace).
+    /// Seul VirtualKeyCode est utilisé (pas de modifiers — c'est une touche simple).
+    /// </summary>
+    public HotkeyBindingConfig ChatOpenKey { get; set; } = new()
+    {
+        DisplayName = "Espace",
+        VirtualKeyCode = VK_SPACE
+    };
+
+    /// <summary>
     /// Touche à maintenir pour activer le broadcast de clics (défaut : Alt).
     /// Seul VirtualKeyCode est utilisé (pas de modifiers — c'est une touche "hold").
     /// </summary>
@@ -68,6 +78,7 @@ public class GlobalHotkeyConfig
 
     private const uint VK_TAB = 0x09;
     private const uint VK_MENU = 0x12;
+    private const uint VK_SPACE = 0x20;
     private const uint VK_OEM_3 = 0xC0; // touche ` (backtick)
     private const uint VK_F1 = 0x70;
 
@@ -101,6 +112,11 @@ public class GlobalHotkeyConfig
         {
             DisplayName = "Clic molette",
             VirtualKeyCode = 0x04 // VK_MBUTTON
+        },
+        ChatOpenKey = new HotkeyBindingConfig
+        {
+            DisplayName = "Espace",
+            VirtualKeyCode = VK_SPACE
         },
         BroadcastKey = new HotkeyBindingConfig
         {

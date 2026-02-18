@@ -4,6 +4,11 @@ namespace DofusManager.Core.Services;
 
 public interface IGroupInviteService
 {
+    /// <summary>
+    /// Touche utilisée pour ouvrir le chat in-game (défaut : VK_SPACE = 0x20).
+    /// </summary>
+    ushort ChatOpenKeyCode { get; set; }
+
     Task<GroupInviteResult> InviteAllAsync(IReadOnlyList<DofusWindow> windows, DofusWindow leader);
 
     Task<GroupInviteResult> ToggleAutoFollowAsync(IReadOnlyList<DofusWindow> windows, DofusWindow leader);
