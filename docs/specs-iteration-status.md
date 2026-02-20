@@ -148,6 +148,27 @@
 - [x] **PushToBroadcastServiceTests** — mock `GetWindowFromPoint` par défaut dans le constructeur
 - [x] Build OK (Core + Tests), 271 tests passent
 
+## Onglet Zaap — Voyage automatisé via le havre-sac
+- [x] `ZaapTerritory` model + `ZaapTerritories.All` — 46 territoires hardcodés, triés alphabétiquement
+- [x] `IZaapTravelService` interface — `TravelToZaapAsync`, propriétés `ZaapClickX/Y`, `HavreSacDelayMs`, `ZaapInterfaceDelayMs`, `HavreSacKeyCode`
+- [x] `ZaapTravelService` — séquence par fenêtre : focus → havre-sac → clic Zaap NPC → taper nom → ENTER, restore focus leader
+- [x] `GlobalHotkeyConfig` étendu — `ZaapClickX`, `ZaapClickY`, `ZaapHavreSacDelayMs`, `ZaapInterfaceDelayMs` (backward-compatible JSON)
+- [x] `App.xaml.cs` — DI pour `IZaapTravelService`
+- [x] `DashboardViewModel` — `IZaapTravelService` injecté, `[ObservableProperty]` pour config Zaap, `FilteredTerritories` collection, `TravelToZaapCommand`, `RefreshFilteredTerritories`, sync service dans les 5 chemins d'init
+- [x] `MainWindow.xaml` — `TabControl` (onglet "Général" + onglet "Zaap"), GroupBox config (X/Y, sliders délais), TextBox filtre, ListBox territoires avec boutons
+- [x] `SessionPersistenceTests` — constructeur mis à jour avec `IZaapTravelService` mock
+- [x] Tests unitaires (13 nouveaux : ZaapTerritoryTests 5 + ZaapTravelServiceTests 8) — total 300
+- [x] Build OK, 300 tests passent
+
+## Zaap — Coordonnées + Favoris
+- [x] `ZaapTerritory` — ajout `X`, `Y`, `Coordinates` (`[X,Y]`) — 47 territoires avec coordonnées réelles
+- [x] `GlobalHotkeyConfig.FavoriteZaaps` — `List<string>` persistée dans profils/session (backward-compatible)
+- [x] `ZaapTerritoryItem` — wrapper ObservableObject avec `IsFavorite`, expose `Name`, `X`, `Y`, `Coordinates`
+- [x] `DashboardViewModel` — `FilteredTerritories` changé en `ObservableCollection<ZaapTerritoryItem>`, tri favoris en haut, `ToggleFavoriteZaapCommand`, persistance dans `SnapshotCurrentProfile`/`InitializeZaapConfig`
+- [x] `MainWindow.xaml` — bouton étoile (Star/StarOutline via DataTrigger), coordonnées `[X,Y]` en gris après le nom
+- [x] Tests unitaires (4 nouveaux : Coordinates, HasCorrectCoordinates) — total 305
+- [x] Build OK, 305 tests passent
+
 ## Itération 5 — Session manager (F5)
 - À planifier
 

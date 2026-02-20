@@ -16,6 +16,7 @@ public class SessionPersistenceTests : IDisposable
     private readonly Mock<IAppStateService> _mockAppState;
     private readonly Mock<IPushToBroadcastService> _mockBroadcast;
     private readonly Mock<IGroupInviteService> _mockGroupInvite;
+    private readonly Mock<IZaapTravelService> _mockZaapTravel;
     private readonly Mock<IWin32WindowHelper> _mockWindowHelper;
 
     private readonly DashboardViewModel _vm;
@@ -29,6 +30,7 @@ public class SessionPersistenceTests : IDisposable
         _mockAppState = new Mock<IAppStateService>();
         _mockBroadcast = new Mock<IPushToBroadcastService>();
         _mockGroupInvite = new Mock<IGroupInviteService>();
+        _mockZaapTravel = new Mock<IZaapTravelService>();
         _mockWindowHelper = new Mock<IWin32WindowHelper>();
 
         _mockDetection.Setup(d => d.DetectedWindows).Returns(new List<DofusWindow>());
@@ -42,6 +44,7 @@ public class SessionPersistenceTests : IDisposable
             _mockAppState.Object,
             _mockBroadcast.Object,
             _mockGroupInvite.Object,
+            _mockZaapTravel.Object,
             _mockWindowHelper.Object);
     }
 

@@ -8,6 +8,7 @@ using DofusManager.Core.Services;
 using DofusManager.Core.Win32;
 using DofusManager.UI.Helpers;
 using Serilog;
+using System.Linq;
 
 namespace DofusManager.UI.ViewModels;
 
@@ -22,6 +23,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private readonly IAppStateService _appStateService;
     private readonly IPushToBroadcastService _pushToBroadcastService;
     private readonly IGroupInviteService _groupInviteService;
+    private readonly IZaapTravelService _zaapTravelService;
     private readonly IWin32WindowHelper _windowHelper;
     private readonly Dispatcher _dispatcher;
 
@@ -47,6 +49,10 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     // Push-to-broadcast
     private DispatcherTimer? _altPollTimer;
     private bool _listeningMode;
+
+    // Pick Zaap coords
+    private DispatcherTimer? _pickModeTimer;
+    private bool _pickMouseWasDown;
 
     // --- Collections ---
 
@@ -123,6 +129,36 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _havreSacKeyDisplay = "H";
 
+    // --- Zaap ---
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PickZaapCoordsButtonText))]
+    private bool _isPickingZaapCoords;
+
+    public string PickZaapCoordsButtonText => IsPickingZaapCoords ? "Annuler" : "Capturer position";
+
+    [ObservableProperty]
+    private int _zaapClickX;
+
+    [ObservableProperty]
+    private int _zaapClickY;
+
+    [ObservableProperty]
+    private int _zaapHavreSacDelayMs = 2000;
+
+    [ObservableProperty]
+    private int _zaapInterfaceDelayMs = 1500;
+
+    [ObservableProperty]
+    private string _zaapFilterText = string.Empty;
+
+    [ObservableProperty]
+    private bool _isZaapTraveling;
+
+    public ObservableCollection<ZaapTerritoryItem> FilteredTerritories { get; } = new();
+
+    private readonly HashSet<string> _favoriteZaapNames = new(StringComparer.OrdinalIgnoreCase);
+
     public string PushToBroadcastButtonText => IsListening ? "Désactiver" : "Activer";
     public string PushToBroadcastIndicator => IsArmed
         ? $"{BroadcastKeyDisplay} maintenu"
@@ -181,6 +217,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     {
         if (_applyingProfile) return;
         _groupInviteService.HavreSacKeyCode = (ushort)value;
+        _zaapTravelService.HavreSacKeyCode = (ushort)value;
         UpdateSessionSnapshot();
     }
 
@@ -188,6 +225,56 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     {
         if (_applyingProfile) return;
         UpdateSessionSnapshot();
+    }
+
+    partial void OnZaapClickXChanged(int value)
+    {
+        if (_applyingProfile) return;
+        _zaapTravelService.ZaapClickX = value;
+        UpdateSessionSnapshot();
+    }
+
+    partial void OnZaapClickYChanged(int value)
+    {
+        if (_applyingProfile) return;
+        _zaapTravelService.ZaapClickY = value;
+        UpdateSessionSnapshot();
+    }
+
+    partial void OnZaapHavreSacDelayMsChanged(int value)
+    {
+        if (_applyingProfile) return;
+        _zaapTravelService.HavreSacDelayMs = value;
+        UpdateSessionSnapshot();
+    }
+
+    partial void OnZaapInterfaceDelayMsChanged(int value)
+    {
+        if (_applyingProfile) return;
+        _zaapTravelService.ZaapInterfaceDelayMs = value;
+        UpdateSessionSnapshot();
+    }
+
+    partial void OnZaapFilterTextChanged(string value)
+    {
+        RefreshFilteredTerritories();
+    }
+
+    private void RefreshFilteredTerritories()
+    {
+        FilteredTerritories.Clear();
+        var filter = ZaapFilterText;
+        var territories = string.IsNullOrWhiteSpace(filter)
+            ? ZaapTerritories.All
+            : ZaapTerritories.All.Where(z => z.Name.Contains(filter, StringComparison.OrdinalIgnoreCase));
+
+        var items = territories
+            .Select(z => new ZaapTerritoryItem { Territory = z, IsFavorite = _favoriteZaapNames.Contains(z.Name) })
+            .OrderByDescending(i => i.IsFavorite)
+            .ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var item in items)
+            FilteredTerritories.Add(item);
     }
 
     // --- Profils ---
@@ -222,6 +309,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         IAppStateService appStateService,
         IPushToBroadcastService pushToBroadcastService,
         IGroupInviteService groupInviteService,
+        IZaapTravelService zaapTravelService,
         IWin32WindowHelper windowHelper)
     {
         _detectionService = detectionService;
@@ -231,6 +319,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         _appStateService = appStateService;
         _pushToBroadcastService = pushToBroadcastService;
         _groupInviteService = groupInviteService;
+        _zaapTravelService = zaapTravelService;
         _windowHelper = windowHelper;
         _dispatcher = Dispatcher.CurrentDispatcher;
 
@@ -245,6 +334,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         InitializeChatOpenKey(defaultConfig.ChatOpenKey);
         InitializeBroadcastKey(defaultConfig.BroadcastKey);
         InitializeHavreSacKey(defaultConfig.HavreSacKey);
+        InitializeZaapConfig(defaultConfig);
 
         // Polling actif par défaut
         _detectionService.StartPolling();
@@ -320,6 +410,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             PasteToChatDoubleEnter = appState.LastHotkeyConfig.PasteToChatDoubleEnter;
             PasteToChatDoubleEnterDelayMs = appState.LastHotkeyConfig.PasteToChatDoubleEnterDelayMs;
             PasteToChatAlwaysLeader = appState.LastHotkeyConfig.PasteToChatAlwaysLeader;
+            InitializeZaapConfig(appState.LastHotkeyConfig);
             if (HotkeysActive) RegisterAllHotkeys();
         }
 
@@ -671,6 +762,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         PasteToChatDoubleEnter = false;
         PasteToChatDoubleEnterDelayMs = 500;
         PasteToChatAlwaysLeader = false;
+        InitializeZaapConfig(defaults);
 
         if (HotkeysActive) RegisterAllHotkeys();
         _activeProfileName = null;
@@ -862,6 +954,165 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         }
     }
 
+    // ===== ZAAP =====
+
+    [RelayCommand]
+    private void TogglePickZaapCoords()
+    {
+        if (IsPickingZaapCoords)
+        {
+            StopPickMode();
+            StatusText = "Capture annulée";
+        }
+        else
+        {
+            IsPickingZaapCoords = true;
+            _pickMouseWasDown = _windowHelper.IsKeyDown(0x01); // VK_LBUTTON — ignorer le clic sur le bouton
+            _pickModeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+            _pickModeTimer.Tick += OnPickModeTimerTick;
+            _pickModeTimer.Start();
+            StatusText = "Cliquez sur le Zaap NPC dans une fenêtre Dofus (Échap pour annuler)";
+        }
+    }
+
+    private void OnPickModeTimerTick(object? sender, EventArgs e)
+    {
+        // Échap → annuler
+        if (_windowHelper.IsKeyDown(0x1B)) // VK_ESCAPE
+        {
+            StopPickMode();
+            StatusText = "Capture annulée";
+            return;
+        }
+
+        var cursorPos = _windowHelper.GetCursorPos();
+        if (cursorPos is null) return;
+
+        var screenX = cursorPos.Value.X;
+        var screenY = cursorPos.Value.Y;
+
+        var handleUnderCursor = _windowHelper.GetWindowFromPoint(screenX, screenY);
+        var windows = _detectionService.DetectedWindows;
+        var isDofusWindow = windows.Any(w => w.Handle == handleUnderCursor);
+
+        // Détection clic : front montant (relâchement)
+        var isDown = _windowHelper.IsKeyDown(0x01); // VK_LBUTTON
+        var wasDown = _pickMouseWasDown;
+        _pickMouseWasDown = isDown;
+
+        if (wasDown && !isDown)
+        {
+            // Clic relâché
+            if (isDofusWindow)
+            {
+                var clientCoords = _windowHelper.ScreenToClient(handleUnderCursor, screenX, screenY);
+                if (clientCoords is not null)
+                {
+                    ZaapClickX = clientCoords.Value.ClientX;
+                    ZaapClickY = clientCoords.Value.ClientY;
+                    StopPickMode();
+                    StatusText = $"Position capturée : {ZaapClickX}, {ZaapClickY}";
+                    return;
+                }
+            }
+            else
+            {
+                StatusText = "Cliquez dans une fenêtre Dofus";
+                return;
+            }
+        }
+
+        // Feedback live
+        if (isDofusWindow)
+        {
+            var clientCoords = _windowHelper.ScreenToClient(handleUnderCursor, screenX, screenY);
+            if (clientCoords is not null)
+                StatusText = $"Position : {clientCoords.Value.ClientX}, {clientCoords.Value.ClientY} — cliquez pour capturer";
+            else
+                StatusText = "Survolez une fenêtre Dofus...";
+        }
+        else
+        {
+            StatusText = "Survolez une fenêtre Dofus...";
+        }
+    }
+
+    private void StopPickMode()
+    {
+        if (_pickModeTimer is not null)
+        {
+            _pickModeTimer.Tick -= OnPickModeTimerTick;
+            _pickModeTimer.Stop();
+            _pickModeTimer = null;
+        }
+        IsPickingZaapCoords = false;
+    }
+
+    [RelayCommand]
+    private async Task TravelToZaap(string? territoryName)
+    {
+        if (string.IsNullOrWhiteSpace(territoryName))
+        {
+            StatusText = "Aucun territoire sélectionné";
+            return;
+        }
+
+        var windows = _detectionService.DetectedWindows;
+        var leader = _focusService.CurrentLeader;
+
+        if (leader is null)
+        {
+            StatusText = "Aucun leader désigné — impossible de voyager";
+            return;
+        }
+
+        if (windows.Count == 0)
+        {
+            StatusText = "Aucune fenêtre détectée";
+            return;
+        }
+
+        IsZaapTraveling = true;
+        StatusText = $"Voyage vers {territoryName} en cours...";
+
+        try
+        {
+            var result = await _zaapTravelService.TravelToZaapAsync(windows, leader, territoryName);
+            _dispatcher.Invoke(() =>
+            {
+                StatusText = result.Success
+                    ? $"Zaap : voyage vers '{territoryName}' envoyé à {result.Invited} fenêtre(s)"
+                    : $"Zaap échoué : {result.ErrorMessage}";
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, "Erreur lors du voyage Zaap");
+            StatusText = $"Erreur : {ex.Message}";
+        }
+        finally
+        {
+            IsZaapTraveling = false;
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleFavoriteZaap(string? territoryName)
+    {
+        if (string.IsNullOrWhiteSpace(territoryName)) return;
+
+        if (!_favoriteZaapNames.Remove(territoryName))
+            _favoriteZaapNames.Add(territoryName);
+
+        // Mettre à jour l'item dans la liste
+        var item = FilteredTerritories.FirstOrDefault(i => i.Name == territoryName);
+        if (item is not null)
+            item.IsFavorite = _favoriteZaapNames.Contains(territoryName);
+
+        RefreshFilteredTerritories();
+        UpdateSessionSnapshot();
+    }
+
     // ===== INTERNAL HELPERS =====
 
     private void OnWindowsChanged(object? sender, WindowsChangedEventArgs e)
@@ -1002,6 +1253,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 PasteToChatDoubleEnter = _sessionSnapshot.GlobalHotkeys.PasteToChatDoubleEnter;
                 PasteToChatDoubleEnterDelayMs = _sessionSnapshot.GlobalHotkeys.PasteToChatDoubleEnterDelayMs;
                 PasteToChatAlwaysLeader = _sessionSnapshot.GlobalHotkeys.PasteToChatAlwaysLeader;
+                InitializeZaapConfig(_sessionSnapshot.GlobalHotkeys);
 
                 if (HotkeysActive)
                     RegisterAllHotkeys();
@@ -1312,6 +1564,24 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             HavreSacKeyDisplay = "H";
         }
         _groupInviteService.HavreSacKeyCode = (ushort)HavreSacKeyVirtualKeyCode;
+        _zaapTravelService.HavreSacKeyCode = (ushort)HavreSacKeyVirtualKeyCode;
+    }
+
+    private void InitializeZaapConfig(GlobalHotkeyConfig config)
+    {
+        ZaapClickX = config.ZaapClickX;
+        ZaapClickY = config.ZaapClickY;
+        ZaapHavreSacDelayMs = config.ZaapHavreSacDelayMs;
+        ZaapInterfaceDelayMs = config.ZaapInterfaceDelayMs;
+        _zaapTravelService.ZaapClickX = config.ZaapClickX;
+        _zaapTravelService.ZaapClickY = config.ZaapClickY;
+        _zaapTravelService.HavreSacDelayMs = config.ZaapHavreSacDelayMs;
+        _zaapTravelService.ZaapInterfaceDelayMs = config.ZaapInterfaceDelayMs;
+
+        _favoriteZaapNames.Clear();
+        foreach (var name in config.FavoriteZaaps)
+            _favoriteZaapNames.Add(name);
+        RefreshFilteredTerritories();
     }
 
     private void InitializeGlobalHotkeys(GlobalHotkeyConfig config)
@@ -1425,7 +1695,12 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 BroadcastDelayRandomMs = BroadcastDelayRandomMs,
                 PasteToChatDoubleEnter = PasteToChatDoubleEnter,
                 PasteToChatDoubleEnterDelayMs = PasteToChatDoubleEnterDelayMs,
-                PasteToChatAlwaysLeader = PasteToChatAlwaysLeader
+                PasteToChatAlwaysLeader = PasteToChatAlwaysLeader,
+                ZaapClickX = ZaapClickX,
+                ZaapClickY = ZaapClickY,
+                ZaapHavreSacDelayMs = ZaapHavreSacDelayMs,
+                ZaapInterfaceDelayMs = ZaapInterfaceDelayMs,
+                FavoriteZaaps = _favoriteZaapNames.ToList()
             };
         }
 
@@ -1534,6 +1809,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             PasteToChatDoubleEnter = profile.GlobalHotkeys.PasteToChatDoubleEnter;
             PasteToChatDoubleEnterDelayMs = profile.GlobalHotkeys.PasteToChatDoubleEnterDelayMs;
             PasteToChatAlwaysLeader = profile.GlobalHotkeys.PasteToChatAlwaysLeader;
+            InitializeZaapConfig(profile.GlobalHotkeys);
 
             if (HotkeysActive)
                 RegisterAllHotkeys();
@@ -1573,6 +1849,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         _autoSaveCts?.Cancel();
         _autoSaveCts?.Dispose();
         StopAltPollTimer();
+        StopPickMode();
         _hotkeyService.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -1669,6 +1946,19 @@ public partial class GlobalHotkeyRowViewModel : ObservableObject
 
     partial void OnHotkeyModifiersChanged(uint value) => _parent.OnHotkeyConfigChanged();
     partial void OnVirtualKeyCodeChanged(uint value) => _parent.OnHotkeyConfigChanged();
+}
+
+public partial class ZaapTerritoryItem : ObservableObject
+{
+    public required ZaapTerritory Territory { get; init; }
+
+    [ObservableProperty]
+    private bool _isFavorite;
+
+    public string Name => Territory.Name;
+    public int X => Territory.X;
+    public int Y => Territory.Y;
+    public string Coordinates => Territory.Coordinates;
 }
 
 public class ProfileListItem

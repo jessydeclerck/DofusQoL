@@ -27,401 +27,550 @@
             </StatusBarItem>
         </StatusBar>
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="10">
-            <StackPanel>
-
-                <!-- ===== PERSONNAGES ===== -->
-                <GroupBox Margin="0,0,0,8">
-                    <GroupBox.Header>
-                        <StackPanel Orientation="Horizontal">
-                            <mi:MaterialIcon Kind="AccountGroup" Width="18" Height="18" Margin="0,0,6,0" />
-                            <TextBlock Text="Personnages" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </GroupBox.Header>
+        <TabControl>
+            <!-- ===== ONGLET GENERAL ===== -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <mi:MaterialIcon Kind="Cog" Width="16" Height="16" Margin="0,0,4,0" />
+                        <TextBlock Text="Général" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabItem.Header>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="10">
                     <StackPanel>
-                        <!-- Boutons Polling/Hotkeys + Topmost -->
-                        <StackPanel Orientation="Horizontal" Margin="5,5,5,5">
-                            <Button Command="{Binding TogglePollingCommand}"
-                                    Padding="8,3" Margin="0,0,5,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <mi:MaterialIcon Kind="Refresh" Width="14" Height="14" Margin="0,0,4,0" />
-                                    <TextBlock Text="{Binding PollingButtonText}" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                            <Button Command="{Binding RefreshCommand}"
-                                    Padding="8,3" Margin="0,0,10,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <mi:MaterialIcon Kind="Magnify" Width="14" Height="14" Margin="0,0,4,0" />
-                                    <TextBlock Text="Rafraîchir" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                            <Button Command="{Binding ToggleHotkeysCommand}"
-                                    Padding="8,3" Margin="0,0,15,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <mi:MaterialIcon Kind="Keyboard" Width="14" Height="14" Margin="0,0,4,0" />
-                                    <TextBlock Text="{Binding HotkeysButtonText}" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                            <CheckBox Content="Toujours visible"
-                                      IsChecked="{Binding IsTopmost}"
-                                      VerticalAlignment="Center" />
-                        </StackPanel>
 
-                        <!-- En-tête colonnes -->
-                        <Grid Margin="5,2,5,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="50" />
-                                <ColumnDefinition Width="40" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="140" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Leader" FontWeight="SemiBold" Foreground="Gray" Margin="4,0,0,0" />
-                            <TextBlock Grid.Column="1" Text="" />
-                            <TextBlock Grid.Column="2" Text="Personnage" FontWeight="SemiBold" Foreground="Gray" Margin="8,0,0,0" />
-                            <TextBlock Grid.Column="3" Text="Raccourci" FontWeight="SemiBold" Foreground="Gray" Margin="4,0,0,0" />
-                        </Grid>
+                        <!-- ===== PERSONNAGES ===== -->
+                        <GroupBox Margin="0,0,0,8">
+                            <GroupBox.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <mi:MaterialIcon Kind="AccountGroup" Width="18" Height="18" Margin="0,0,6,0" />
+                                    <TextBlock Text="Personnages" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </GroupBox.Header>
+                            <StackPanel>
+                                <!-- Boutons Polling/Hotkeys + Topmost -->
+                                <StackPanel Orientation="Horizontal" Margin="5,5,5,5">
+                                    <Button Command="{Binding TogglePollingCommand}"
+                                            Padding="8,3" Margin="0,0,5,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <mi:MaterialIcon Kind="Refresh" Width="14" Height="14" Margin="0,0,4,0" />
+                                            <TextBlock Text="{Binding PollingButtonText}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Command="{Binding RefreshCommand}"
+                                            Padding="8,3" Margin="0,0,10,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <mi:MaterialIcon Kind="Magnify" Width="14" Height="14" Margin="0,0,4,0" />
+                                            <TextBlock Text="Rafraîchir" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Command="{Binding ToggleHotkeysCommand}"
+                                            Padding="8,3" Margin="0,0,15,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <mi:MaterialIcon Kind="Keyboard" Width="14" Height="14" Margin="0,0,4,0" />
+                                            <TextBlock Text="{Binding HotkeysButtonText}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                    <CheckBox Content="Toujours visible"
+                                              IsChecked="{Binding IsTopmost}"
+                                              VerticalAlignment="Center" />
+                                </StackPanel>
 
-                        <!-- Liste des personnages (drag-and-drop pour réordonner) -->
-                        <ListBox ItemsSource="{Binding Characters}" Margin="5,0,5,5"
-                                 HorizontalContentAlignment="Stretch"
-                                 controls:DragDropReorderBehavior.IsEnabled="True"
-                                 BorderThickness="0" Background="Transparent">
-                            <ListBox.ItemContainerStyle>
-                                <Style TargetType="ListBoxItem">
-                                    <Setter Property="Padding" Value="0" />
-                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                    <Setter Property="Cursor" Value="SizeAll" />
-                                </Style>
-                            </ListBox.ItemContainerStyle>
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid Margin="0,1">
-                                        <Grid.Style>
-                                            <Style TargetType="Grid">
+                                <!-- En-tête colonnes -->
+                                <Grid Margin="5,2,5,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="50" />
+                                        <ColumnDefinition Width="40" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="140" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Leader" FontWeight="SemiBold" Foreground="Gray" Margin="4,0,0,0" />
+                                    <TextBlock Grid.Column="1" Text="" />
+                                    <TextBlock Grid.Column="2" Text="Personnage" FontWeight="SemiBold" Foreground="Gray" Margin="8,0,0,0" />
+                                    <TextBlock Grid.Column="3" Text="Raccourci" FontWeight="SemiBold" Foreground="Gray" Margin="4,0,0,0" />
+                                </Grid>
+
+                                <!-- Liste des personnages (drag-and-drop pour réordonner) -->
+                                <ListBox ItemsSource="{Binding Characters}" Margin="5,0,5,5"
+                                         HorizontalContentAlignment="Stretch"
+                                         controls:DragDropReorderBehavior.IsEnabled="True"
+                                         BorderThickness="0" Background="Transparent">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Padding" Value="0" />
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                            <Setter Property="Cursor" Value="SizeAll" />
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,1">
+                                                <Grid.Style>
+                                                    <Style TargetType="Grid">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsConnected}" Value="False">
+                                                                <Setter Property="Opacity" Value="0.4" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Grid.Style>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="50" />  <!-- Leader -->
+                                                    <ColumnDefinition Width="40" />  <!-- Icône classe -->
+                                                    <ColumnDefinition Width="*" />   <!-- Nom -->
+                                                    <ColumnDefinition Width="140" /> <!-- Raccourci -->
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Checkbox Leader -->
+                                                <CheckBox Grid.Column="0" IsChecked="{Binding IsLeader, Mode=OneWay}"
+                                                          VerticalAlignment="Center" Margin="4,0,0,0">
+                                                    <CheckBox.InputBindings>
+                                                        <MouseBinding MouseAction="LeftClick"
+                                                            Command="{Binding DataContext.ToggleLeaderCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}" />
+                                                    </CheckBox.InputBindings>
+                                                </CheckBox>
+
+                                                <!-- Icône de classe -->
+                                                <Border Grid.Column="1" Width="32" Height="32"
+                                                        CornerRadius="4" ClipToBounds="True"
+                                                        VerticalAlignment="Center" Margin="2,0,2,0"
+                                                        BorderBrush="#40000000" BorderThickness="1">
+                                                    <Image Source="{Binding ClassIcon}"
+                                                           Stretch="UniformToFill"
+                                                           RenderOptions.BitmapScalingMode="HighQuality" />
+                                                </Border>
+
+                                                <!-- Nom du personnage + classe -->
+                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="6,0,0,0">
+                                                    <TextBlock Text="{Binding DisplayName}"
+                                                               FontWeight="SemiBold" FontSize="13"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding ClassName}"
+                                                               FontSize="11" Foreground="Gray"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+
+                                                <!-- Raccourci (capture clavier) -->
+                                                <controls:HotkeyCaptureBox Grid.Column="3"
+                                                    HotkeyModifiers="{Binding HotkeyModifiers, Mode=TwoWay}"
+                                                    VirtualKeyCode="{Binding VirtualKeyCode, Mode=TwoWay}"
+                                                    HotkeyDisplay="{Binding HotkeyDisplay, Mode=TwoWay}"
+                                                    VerticalContentAlignment="Center"
+                                                    Margin="4,0,0,0" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <!-- ===== RACCOURCIS GLOBAUX ===== -->
+                        <GroupBox Margin="0,0,0,8">
+                            <GroupBox.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <mi:MaterialIcon Kind="KeyboardSettings" Width="18" Height="18" Margin="0,0,6,0" />
+                                    <TextBlock Text="Raccourcis globaux" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </GroupBox.Header>
+                            <StackPanel>
+                                <ItemsControl ItemsSource="{Binding GlobalHotkeys}" Margin="5">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,2">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="160" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0" Text="{Binding Label}"
+                                                           VerticalAlignment="Center" />
+                                                <controls:HotkeyCaptureBox Grid.Column="1"
+                                                    HotkeyModifiers="{Binding HotkeyModifiers, Mode=TwoWay}"
+                                                    VirtualKeyCode="{Binding VirtualKeyCode, Mode=TwoWay}"
+                                                    HotkeyDisplay="{Binding HotkeyDisplay, Mode=TwoWay}"
+                                                    VerticalContentAlignment="Center" MaxWidth="200"
+                                                    HorizontalAlignment="Left" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Grid Margin="5,6,5,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="160" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" Text="Touche ouvrir chat"
+                                               VerticalAlignment="Center"
+                                               ToolTip="Touche configurée dans Dofus pour ouvrir le chat. Par défaut : Espace." />
+                                    <controls:HotkeyCaptureBox Grid.Column="1"
+                                        SingleKeyMode="True"
+                                        VirtualKeyCode="{Binding ChatOpenKeyVirtualKeyCode, Mode=TwoWay}"
+                                        HotkeyDisplay="{Binding ChatOpenKeyDisplay, Mode=TwoWay}"
+                                        VerticalContentAlignment="Center" MaxWidth="200"
+                                        HorizontalAlignment="Left"
+                                        ToolTip="Touche configurée dans Dofus pour ouvrir le chat. Par défaut : Espace." />
+                                </Grid>
+                                <CheckBox Content="Toujours coller dans le leader"
+                                          IsChecked="{Binding PasteToChatAlwaysLeader}"
+                                          Margin="165,2,0,2"
+                                          ToolTip="Le collage se fait toujours dans la fenêtre du leader, peu importe la fenêtre survolée." />
+                                <CheckBox Content="Double Entrée (confirmation auto)"
+                                          IsChecked="{Binding PasteToChatDoubleEnter}"
+                                          Margin="165,2,0,2"
+                                          ToolTip="Envoie un 2e ENTRÉE pour valider les actions qui nécessitent une confirmation." />
+                                <StackPanel Orientation="Horizontal" Margin="165,2,0,2"
+                                            Visibility="{Binding PasteToChatDoubleEnter, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <TextBlock Text="Délai double entrée :" VerticalAlignment="Center" />
+                                    <Slider Value="{Binding PasteToChatDoubleEnterDelayMs}" Minimum="200" Maximum="1500"
+                                            Width="150" Margin="8,0,0,0" VerticalAlignment="Center"
+                                            TickFrequency="50" IsSnapToTickEnabled="True" />
+                                    <TextBlock VerticalAlignment="Center" Margin="6,0,0,0">
+                                        <Run Text="{Binding PasteToChatDoubleEnterDelayMs, Mode=OneWay}" />
+                                        <Run Text="ms" />
+                                    </TextBlock>
+                                </StackPanel>
+                                <Grid Margin="5,6,5,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="160" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" Text="Touche havre-sac"
+                                               VerticalAlignment="Center"
+                                               ToolTip="Touche configurée dans Dofus pour le havre-sac. Par défaut : H." />
+                                    <controls:HotkeyCaptureBox Grid.Column="1"
+                                        SingleKeyMode="True"
+                                        VirtualKeyCode="{Binding HavreSacKeyVirtualKeyCode, Mode=TwoWay}"
+                                        HotkeyDisplay="{Binding HavreSacKeyDisplay, Mode=TwoWay}"
+                                        VerticalContentAlignment="Center" MaxWidth="200"
+                                        HorizontalAlignment="Left"
+                                        ToolTip="Touche configurée dans Dofus pour le havre-sac. Par défaut : H." />
+                                </Grid>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <!-- ===== GROUPE ===== -->
+                        <GroupBox Margin="0,0,0,8" Padding="5">
+                            <GroupBox.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <mi:MaterialIcon Kind="AccountMultiplePlus" Width="18" Height="18" Margin="0,0,6,0" />
+                                    <TextBlock Text="Groupe" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </GroupBox.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Command="{Binding InviteAllCommand}" Padding="8,3">
+                                    <StackPanel Orientation="Horizontal">
+                                        <mi:MaterialIcon Kind="AccountPlus" Width="14" Height="14" Margin="0,0,4,0" />
+                                        <TextBlock Text="Inviter tout le monde" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding ToggleAutoFollowCommand}" Padding="8,3" Margin="8,0,0,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <mi:MaterialIcon Kind="Walk" Width="14" Height="14" Margin="0,0,4,0" />
+                                        <TextBlock Text="Toggle Autofollow" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding SendAllToHavreSacCommand}" Padding="8,3" Margin="8,0,0,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <mi:MaterialIcon Kind="Home" Width="14" Height="14" Margin="0,0,4,0" />
+                                        <TextBlock Text="Tous au havre-sac" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock VerticalAlignment="Center" Margin="10,0,0,0"
+                                           Text="/invite depuis le leader. Ctrl+W sur chaque suiveur." Foreground="Gray" />
+                            </StackPanel>
+                        </GroupBox>
+
+                        <!-- ===== PUSH-TO-BROADCAST ===== -->
+                        <GroupBox Margin="0,0,0,8" Padding="5">
+                            <GroupBox.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <mi:MaterialIcon Kind="CastConnected" Width="18" Height="18" Margin="0,0,6,0" />
+                                    <TextBlock Text="Push-to-Broadcast" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </GroupBox.Header>
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Button Grid.Column="0"
+                                            Command="{Binding TogglePushToBroadcastCommand}"
+                                            Padding="8,3" Margin="0,0,8,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <mi:MaterialIcon Kind="Power" Width="14" Height="14" Margin="0,0,4,0" />
+                                            <TextBlock Text="{Binding PushToBroadcastButtonText}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+
+                                    <Border Grid.Column="1" CornerRadius="3" Padding="8,3">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="Gray" />
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsConnected}" Value="False">
-                                                        <Setter Property="Opacity" Value="0.4" />
+                                                    <DataTrigger Binding="{Binding IsArmed}" Value="True">
+                                                        <Setter Property="Background" Value="#E74C3C" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
-                                        </Grid.Style>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="50" />  <!-- Leader -->
-                                            <ColumnDefinition Width="40" />  <!-- Icône classe -->
-                                            <ColumnDefinition Width="*" />   <!-- Nom -->
-                                            <ColumnDefinition Width="140" /> <!-- Raccourci -->
-                                        </Grid.ColumnDefinitions>
+                                        </Border.Style>
+                                        <TextBlock Text="{Binding PushToBroadcastIndicator}"
+                                                   FontWeight="Bold" Foreground="White" />
+                                    </Border>
 
-                                        <!-- Checkbox Leader -->
-                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsLeader, Mode=OneWay}"
-                                                  VerticalAlignment="Center" Margin="4,0,0,0">
-                                            <CheckBox.InputBindings>
-                                                <MouseBinding MouseAction="LeftClick"
-                                                    Command="{Binding DataContext.ToggleLeaderCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                    CommandParameter="{Binding}" />
-                                            </CheckBox.InputBindings>
-                                        </CheckBox>
+                                    <TextBlock Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0"
+                                               Foreground="Gray" TextWrapping="Wrap"
+                                               Text="{Binding BroadcastKeyHelpText}" />
+                                </Grid>
 
-                                        <!-- Icône de classe -->
-                                        <Border Grid.Column="1" Width="32" Height="32"
-                                                CornerRadius="4" ClipToBounds="True"
-                                                VerticalAlignment="Center" Margin="2,0,2,0"
-                                                BorderBrush="#40000000" BorderThickness="1">
-                                            <Image Source="{Binding ClassIcon}"
-                                                   Stretch="UniformToFill"
-                                                   RenderOptions.BitmapScalingMode="HighQuality" />
-                                        </Border>
+                                <!-- Touche configurable -->
+                                <Grid Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="160" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
 
-                                        <!-- Nom du personnage + classe -->
-                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="6,0,0,0">
-                                            <TextBlock Text="{Binding DisplayName}"
-                                                       FontWeight="SemiBold" FontSize="13"
-                                                       TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding ClassName}"
-                                                       FontSize="11" Foreground="Gray"
-                                                       TextTrimming="CharacterEllipsis" />
-                                        </StackPanel>
+                                    <TextBlock Grid.Column="0" Text="Touche de broadcast"
+                                               VerticalAlignment="Center" />
+                                    <controls:HotkeyCaptureBox Grid.Column="1"
+                                        SingleKeyMode="True"
+                                        VirtualKeyCode="{Binding BroadcastKeyVirtualKeyCode, Mode=TwoWay}"
+                                        HotkeyDisplay="{Binding BroadcastKeyDisplay, Mode=TwoWay}"
+                                        VerticalContentAlignment="Center" MaxWidth="200"
+                                        HorizontalAlignment="Left" />
+                                </Grid>
 
-                                        <!-- Raccourci (capture clavier) -->
-                                        <controls:HotkeyCaptureBox Grid.Column="3"
-                                            HotkeyModifiers="{Binding HotkeyModifiers, Mode=TwoWay}"
-                                            VirtualKeyCode="{Binding VirtualKeyCode, Mode=TwoWay}"
-                                            HotkeyDisplay="{Binding HotkeyDisplay, Mode=TwoWay}"
-                                            VerticalContentAlignment="Center"
-                                            Margin="4,0,0,0" />
-                                    </Grid>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                    </StackPanel>
-                </GroupBox>
+                                <CheckBox Content="Retour au leader après broadcast"
+                                          IsChecked="{Binding ReturnToLeaderAfterBroadcast}"
+                                          Margin="0,6,0,0"
+                                          ToolTip="Le focus revient au leader au lieu de la fenêtre source après chaque broadcast." />
 
-                <!-- ===== RACCOURCIS GLOBAUX ===== -->
-                <GroupBox Margin="0,0,0,8">
-                    <GroupBox.Header>
-                        <StackPanel Orientation="Horizontal">
-                            <mi:MaterialIcon Kind="KeyboardSettings" Width="18" Height="18" Margin="0,0,6,0" />
-                            <TextBlock Text="Raccourcis globaux" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </GroupBox.Header>
-                    <StackPanel>
-                        <ItemsControl ItemsSource="{Binding GlobalHotkeys}" Margin="5">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid Margin="0,2">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="160" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-
-                                        <TextBlock Grid.Column="0" Text="{Binding Label}"
-                                                   VerticalAlignment="Center" />
-                                        <controls:HotkeyCaptureBox Grid.Column="1"
-                                            HotkeyModifiers="{Binding HotkeyModifiers, Mode=TwoWay}"
-                                            VirtualKeyCode="{Binding VirtualKeyCode, Mode=TwoWay}"
-                                            HotkeyDisplay="{Binding HotkeyDisplay, Mode=TwoWay}"
-                                            VerticalContentAlignment="Center" MaxWidth="200"
-                                            HorizontalAlignment="Left" />
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <Grid Margin="5,6,5,2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="160" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-
-                            <TextBlock Grid.Column="0" Text="Touche ouvrir chat"
-                                       VerticalAlignment="Center"
-                                       ToolTip="Touche configurée dans Dofus pour ouvrir le chat. Par défaut : Espace." />
-                            <controls:HotkeyCaptureBox Grid.Column="1"
-                                SingleKeyMode="True"
-                                VirtualKeyCode="{Binding ChatOpenKeyVirtualKeyCode, Mode=TwoWay}"
-                                HotkeyDisplay="{Binding ChatOpenKeyDisplay, Mode=TwoWay}"
-                                VerticalContentAlignment="Center" MaxWidth="200"
-                                HorizontalAlignment="Left"
-                                ToolTip="Touche configurée dans Dofus pour ouvrir le chat. Par défaut : Espace." />
-                        </Grid>
-                        <CheckBox Content="Toujours coller dans le leader"
-                                  IsChecked="{Binding PasteToChatAlwaysLeader}"
-                                  Margin="165,2,0,2"
-                                  ToolTip="Le collage se fait toujours dans la fenêtre du leader, peu importe la fenêtre survolée." />
-                        <CheckBox Content="Double Entrée (confirmation auto)"
-                                  IsChecked="{Binding PasteToChatDoubleEnter}"
-                                  Margin="165,2,0,2"
-                                  ToolTip="Envoie un 2e ENTRÉE pour valider les actions qui nécessitent une confirmation." />
-                        <StackPanel Orientation="Horizontal" Margin="165,2,0,2"
-                                    Visibility="{Binding PasteToChatDoubleEnter, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <TextBlock Text="Délai double entrée :" VerticalAlignment="Center" />
-                            <Slider Value="{Binding PasteToChatDoubleEnterDelayMs}" Minimum="200" Maximum="1500"
-                                    Width="150" Margin="8,0,0,0" VerticalAlignment="Center"
-                                    TickFrequency="50" IsSnapToTickEnabled="True" />
-                            <TextBlock VerticalAlignment="Center" Margin="6,0,0,0">
-                                <Run Text="{Binding PasteToChatDoubleEnterDelayMs, Mode=OneWay}" />
-                                <Run Text="ms" />
-                            </TextBlock>
-                        </StackPanel>
-                        <Grid Margin="5,6,5,2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="160" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-
-                            <TextBlock Grid.Column="0" Text="Touche havre-sac"
-                                       VerticalAlignment="Center"
-                                       ToolTip="Touche configurée dans Dofus pour le havre-sac. Par défaut : H." />
-                            <controls:HotkeyCaptureBox Grid.Column="1"
-                                SingleKeyMode="True"
-                                VirtualKeyCode="{Binding HavreSacKeyVirtualKeyCode, Mode=TwoWay}"
-                                HotkeyDisplay="{Binding HavreSacKeyDisplay, Mode=TwoWay}"
-                                VerticalContentAlignment="Center" MaxWidth="200"
-                                HorizontalAlignment="Left"
-                                ToolTip="Touche configurée dans Dofus pour le havre-sac. Par défaut : H." />
-                        </Grid>
-                    </StackPanel>
-                </GroupBox>
-
-                <!-- ===== GROUPE ===== -->
-                <GroupBox Margin="0,0,0,8" Padding="5">
-                    <GroupBox.Header>
-                        <StackPanel Orientation="Horizontal">
-                            <mi:MaterialIcon Kind="AccountMultiplePlus" Width="18" Height="18" Margin="0,0,6,0" />
-                            <TextBlock Text="Groupe" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </GroupBox.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <Button Command="{Binding InviteAllCommand}" Padding="8,3">
-                            <StackPanel Orientation="Horizontal">
-                                <mi:MaterialIcon Kind="AccountPlus" Width="14" Height="14" Margin="0,0,4,0" />
-                                <TextBlock Text="Inviter tout le monde" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                        <Button Command="{Binding ToggleAutoFollowCommand}" Padding="8,3" Margin="8,0,0,0">
-                            <StackPanel Orientation="Horizontal">
-                                <mi:MaterialIcon Kind="Walk" Width="14" Height="14" Margin="0,0,4,0" />
-                                <TextBlock Text="Toggle Autofollow" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                        <Button Command="{Binding SendAllToHavreSacCommand}" Padding="8,3" Margin="8,0,0,0">
-                            <StackPanel Orientation="Horizontal">
-                                <mi:MaterialIcon Kind="Home" Width="14" Height="14" Margin="0,0,4,0" />
-                                <TextBlock Text="Tous au havre-sac" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                        <TextBlock VerticalAlignment="Center" Margin="10,0,0,0"
-                                   Text="/invite depuis le leader. Ctrl+W sur chaque suiveur." Foreground="Gray" />
-                    </StackPanel>
-                </GroupBox>
-
-                <!-- ===== PUSH-TO-BROADCAST ===== -->
-                <GroupBox Margin="0,0,0,8" Padding="5">
-                    <GroupBox.Header>
-                        <StackPanel Orientation="Horizontal">
-                            <mi:MaterialIcon Kind="CastConnected" Width="18" Height="18" Margin="0,0,6,0" />
-                            <TextBlock Text="Push-to-Broadcast" FontWeight="SemiBold" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </GroupBox.Header>
-                    <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-
-                            <Button Grid.Column="0"
-                                    Command="{Binding TogglePushToBroadcastCommand}"
-                                    Padding="8,3" Margin="0,0,8,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <mi:MaterialIcon Kind="Power" Width="14" Height="14" Margin="0,0,4,0" />
-                                    <TextBlock Text="{Binding PushToBroadcastButtonText}" VerticalAlignment="Center" />
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBlock Text="Délai entre fenêtres :" VerticalAlignment="Center" />
+                                    <Slider Value="{Binding BroadcastDelayMs}" Minimum="0" Maximum="300"
+                                            Width="150" Margin="8,0,0,0" VerticalAlignment="Center"
+                                            TickFrequency="25" IsSnapToTickEnabled="True" />
+                                    <TextBlock VerticalAlignment="Center" Margin="6,0,0,0">
+                                        <Run Text="{Binding BroadcastDelayMs, Mode=OneWay}" />
+                                        <Run Text="ms" />
+                                    </TextBlock>
                                 </StackPanel>
-                            </Button>
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBlock Text="Variation aléatoire :" VerticalAlignment="Center" />
+                                    <Slider Value="{Binding BroadcastDelayRandomMs}" Minimum="0" Maximum="100"
+                                            Width="150" Margin="8,0,0,0" VerticalAlignment="Center"
+                                            TickFrequency="5" IsSnapToTickEnabled="True" />
+                                    <TextBlock VerticalAlignment="Center" Margin="6,0,0,0">
+                                        <Run Text="±" /><Run Text="{Binding BroadcastDelayRandomMs, Mode=OneWay}" />
+                                        <Run Text="ms" />
+                                    </TextBlock>
+                                </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
 
-                            <Border Grid.Column="1" CornerRadius="3" Padding="8,3">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="Background" Value="Gray" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsArmed}" Value="True">
-                                                <Setter Property="Background" Value="#E74C3C" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-                                <TextBlock Text="{Binding PushToBroadcastIndicator}"
-                                           FontWeight="Bold" Foreground="White" />
-                            </Border>
+                        <!-- ===== PROFIL ===== -->
+                        <GroupBox Margin="0,0,0,8" Padding="5">
+                            <GroupBox.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <mi:MaterialIcon Kind="ContentSave" Width="18" Height="18" Margin="0,0,6,0" />
+                                    <TextBlock Text="Profil" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </GroupBox.Header>
+                            <WrapPanel Orientation="Horizontal">
+                                <!-- Sélection profil -->
+                                <ComboBox ItemsSource="{Binding Profiles}"
+                                          SelectedItem="{Binding SelectedProfile}"
+                                          DisplayMemberPath="ProfileName"
+                                          Width="160" Margin="0,0,5,3" />
+                                <Button Command="{Binding LoadProfileCommand}"
+                                        Padding="8,3" Margin="0,0,5,3">
+                                    <StackPanel Orientation="Horizontal">
+                                        <mi:MaterialIcon Kind="FolderOpen" Width="14" Height="14" Margin="0,0,4,0" />
+                                        <TextBlock Text="Charger" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding SaveProfileCommand}"
+                                        Padding="8,3" Margin="0,0,5,3">
+                                    <StackPanel Orientation="Horizontal">
+                                        <mi:MaterialIcon Kind="ContentSave" Width="14" Height="14" Margin="0,0,4,0" />
+                                        <TextBlock Text="Sauvegarder" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding DeleteProfileCommand}"
+                                        Padding="8,3" Margin="0,0,15,3">
+                                    <StackPanel Orientation="Horizontal">
+                                        <mi:MaterialIcon Kind="Delete" Width="14" Height="14" Margin="0,0,4,0" />
+                                        <TextBlock Text="Supprimer" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
 
-                            <TextBlock Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0"
-                                       Foreground="Gray" TextWrapping="Wrap"
-                                       Text="{Binding BroadcastKeyHelpText}" />
-                        </Grid>
+                                <!-- Nouveau profil -->
+                                <TextBox Text="{Binding NewProfileName, UpdateSourceTrigger=PropertyChanged}"
+                                         Width="140" VerticalContentAlignment="Center" Margin="0,0,5,3" />
+                                <Button Command="{Binding CreateProfileCommand}"
+                                        Padding="8,3" Margin="0,0,15,3">
+                                    <StackPanel Orientation="Horizontal">
+                                        <mi:MaterialIcon Kind="Plus" Width="14" Height="14" Margin="0,0,4,0" />
+                                        <TextBlock Text="Créer" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
 
-                        <!-- Touche configurable -->
-                        <Grid Margin="0,6,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="160" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-
-                            <TextBlock Grid.Column="0" Text="Touche de broadcast"
-                                       VerticalAlignment="Center" />
-                            <controls:HotkeyCaptureBox Grid.Column="1"
-                                SingleKeyMode="True"
-                                VirtualKeyCode="{Binding BroadcastKeyVirtualKeyCode, Mode=TwoWay}"
-                                HotkeyDisplay="{Binding BroadcastKeyDisplay, Mode=TwoWay}"
-                                VerticalContentAlignment="Center" MaxWidth="200"
-                                HorizontalAlignment="Left" />
-                        </Grid>
-
-                        <CheckBox Content="Retour au leader après broadcast"
-                                  IsChecked="{Binding ReturnToLeaderAfterBroadcast}"
-                                  Margin="0,6,0,0"
-                                  ToolTip="Le focus revient au leader au lieu de la fenêtre source après chaque broadcast." />
-
-                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                            <TextBlock Text="Délai entre fenêtres :" VerticalAlignment="Center" />
-                            <Slider Value="{Binding BroadcastDelayMs}" Minimum="0" Maximum="300"
-                                    Width="150" Margin="8,0,0,0" VerticalAlignment="Center"
-                                    TickFrequency="25" IsSnapToTickEnabled="True" />
-                            <TextBlock VerticalAlignment="Center" Margin="6,0,0,0">
-                                <Run Text="{Binding BroadcastDelayMs, Mode=OneWay}" />
-                                <Run Text="ms" />
-                            </TextBlock>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                            <TextBlock Text="Variation aléatoire :" VerticalAlignment="Center" />
-                            <Slider Value="{Binding BroadcastDelayRandomMs}" Minimum="0" Maximum="100"
-                                    Width="150" Margin="8,0,0,0" VerticalAlignment="Center"
-                                    TickFrequency="5" IsSnapToTickEnabled="True" />
-                            <TextBlock VerticalAlignment="Center" Margin="6,0,0,0">
-                                <Run Text="±" /><Run Text="{Binding BroadcastDelayRandomMs, Mode=OneWay}" />
-                                <Run Text="ms" />
-                            </TextBlock>
-                        </StackPanel>
+                                <!-- Reset -->
+                                <Button Command="{Binding ResetDefaultsCommand}"
+                                        Padding="8,3" Margin="0,0,0,3">
+                                    <StackPanel Orientation="Horizontal">
+                                        <mi:MaterialIcon Kind="Restore" Width="14" Height="14" Margin="0,0,4,0" />
+                                        <TextBlock Text="Réinitialiser raccourcis" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
+                        </GroupBox>
                     </StackPanel>
-                </GroupBox>
+                </ScrollViewer>
+            </TabItem>
 
-                <!-- ===== PROFIL ===== -->
-                <GroupBox Margin="0,0,0,8" Padding="5">
-                    <GroupBox.Header>
-                        <StackPanel Orientation="Horizontal">
-                            <mi:MaterialIcon Kind="ContentSave" Width="18" Height="18" Margin="0,0,6,0" />
-                            <TextBlock Text="Profil" FontWeight="SemiBold" VerticalAlignment="Center" />
+            <!-- ===== ONGLET ZAAP ===== -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <mi:MaterialIcon Kind="MapMarker" Width="16" Height="16" Margin="0,0,4,0" />
+                        <TextBlock Text="Zaap" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabItem.Header>
+                <DockPanel>
+                    <!-- Configuration Zaap -->
+                    <GroupBox DockPanel.Dock="Top" Margin="10,10,10,5">
+                        <GroupBox.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <mi:MaterialIcon Kind="Cog" Width="18" Height="18" Margin="0,0,6,0" />
+                                <TextBlock Text="Configuration" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </GroupBox.Header>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="5,4,5,4">
+                                <TextBlock Text="Position clic Zaap (X, Y) :" VerticalAlignment="Center" Width="180" />
+                                <TextBox Text="{Binding ZaapClickX, UpdateSourceTrigger=PropertyChanged}"
+                                         Width="60" Margin="0,0,8,0" VerticalContentAlignment="Center" />
+                                <TextBox Text="{Binding ZaapClickY, UpdateSourceTrigger=PropertyChanged}"
+                                         Width="60" VerticalContentAlignment="Center" />
+                                <Button Command="{Binding TogglePickZaapCoordsCommand}" Padding="8,3" Margin="8,0,0,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <mi:MaterialIcon Kind="Crosshairs" Width="14" Height="14" Margin="0,0,4,0" />
+                                        <TextBlock Text="{Binding PickZaapCoordsButtonText}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock Text="Coordonnées client de la fenêtre Dofus" Foreground="Gray"
+                                           VerticalAlignment="Center" Margin="10,0,0,0" />
+                            </StackPanel>
+                            <TextBlock Text="Cliquez sur le Zaap pour capturer sa position (Échap pour annuler)"
+                                       Foreground="#E67E22" FontWeight="SemiBold" Margin="5,2,5,4"
+                                       Visibility="{Binding IsPickingZaapCoords, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            <StackPanel Orientation="Horizontal" Margin="5,4,5,4">
+                                <TextBlock Text="Délai havre-sac :" VerticalAlignment="Center" Width="180" />
+                                <Slider Value="{Binding ZaapHavreSacDelayMs}" Minimum="500" Maximum="5000"
+                                        Width="200" VerticalAlignment="Center"
+                                        TickFrequency="250" IsSnapToTickEnabled="True" />
+                                <TextBlock VerticalAlignment="Center" Margin="8,0,0,0">
+                                    <Run Text="{Binding ZaapHavreSacDelayMs, Mode=OneWay}" />
+                                    <Run Text="ms" />
+                                </TextBlock>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="5,4,5,4">
+                                <TextBlock Text="Délai interface Zaap :" VerticalAlignment="Center" Width="180" />
+                                <Slider Value="{Binding ZaapInterfaceDelayMs}" Minimum="500" Maximum="5000"
+                                        Width="200" VerticalAlignment="Center"
+                                        TickFrequency="250" IsSnapToTickEnabled="True" />
+                                <TextBlock VerticalAlignment="Center" Margin="8,0,0,0">
+                                    <Run Text="{Binding ZaapInterfaceDelayMs, Mode=OneWay}" />
+                                    <Run Text="ms" />
+                                </TextBlock>
+                            </StackPanel>
                         </StackPanel>
-                    </GroupBox.Header>
-                    <WrapPanel Orientation="Horizontal">
-                        <!-- Sélection profil -->
-                        <ComboBox ItemsSource="{Binding Profiles}"
-                                  SelectedItem="{Binding SelectedProfile}"
-                                  DisplayMemberPath="ProfileName"
-                                  Width="160" Margin="0,0,5,3" />
-                        <Button Command="{Binding LoadProfileCommand}"
-                                Padding="8,3" Margin="0,0,5,3">
-                            <StackPanel Orientation="Horizontal">
-                                <mi:MaterialIcon Kind="FolderOpen" Width="14" Height="14" Margin="0,0,4,0" />
-                                <TextBlock Text="Charger" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                        <Button Command="{Binding SaveProfileCommand}"
-                                Padding="8,3" Margin="0,0,5,3">
-                            <StackPanel Orientation="Horizontal">
-                                <mi:MaterialIcon Kind="ContentSave" Width="14" Height="14" Margin="0,0,4,0" />
-                                <TextBlock Text="Sauvegarder" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                        <Button Command="{Binding DeleteProfileCommand}"
-                                Padding="8,3" Margin="0,0,15,3">
-                            <StackPanel Orientation="Horizontal">
-                                <mi:MaterialIcon Kind="Delete" Width="14" Height="14" Margin="0,0,4,0" />
-                                <TextBlock Text="Supprimer" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
+                    </GroupBox>
 
-                        <!-- Nouveau profil -->
-                        <TextBox Text="{Binding NewProfileName, UpdateSourceTrigger=PropertyChanged}"
-                                 Width="140" VerticalContentAlignment="Center" Margin="0,0,5,3" />
-                        <Button Command="{Binding CreateProfileCommand}"
-                                Padding="8,3" Margin="0,0,15,3">
-                            <StackPanel Orientation="Horizontal">
-                                <mi:MaterialIcon Kind="Plus" Width="14" Height="14" Margin="0,0,4,0" />
-                                <TextBlock Text="Créer" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
+                    <!-- Recherche -->
+                    <Grid DockPanel.Dock="Top" Margin="10,5,10,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,8,0">
+                            <mi:MaterialIcon Kind="Magnify" Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Rechercher :" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding ZaapFilterText, UpdateSourceTrigger=PropertyChanged}"
+                                 VerticalContentAlignment="Center" Padding="4,3" />
+                    </Grid>
 
-                        <!-- Reset -->
-                        <Button Command="{Binding ResetDefaultsCommand}"
-                                Padding="8,3" Margin="0,0,0,3">
-                            <StackPanel Orientation="Horizontal">
-                                <mi:MaterialIcon Kind="Restore" Width="14" Height="14" Margin="0,0,4,0" />
-                                <TextBlock Text="Réinitialiser raccourcis" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </Button>
-                    </WrapPanel>
-                </GroupBox>
-            </StackPanel>
-        </ScrollViewer>
+                    <!-- Liste des territoires -->
+                    <ListBox ItemsSource="{Binding FilteredTerritories}" Margin="10,5,10,10"
+                             HorizontalContentAlignment="Stretch"
+                             BorderThickness="1" BorderBrush="#CCCCCC">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Bouton étoile favori -->
+                                    <Button Grid.Column="0"
+                                            Command="{Binding DataContext.ToggleFavoriteZaapCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding Name}"
+                                            Background="Transparent" BorderThickness="0"
+                                            Padding="6,6,2,6" Cursor="Hand"
+                                            VerticalAlignment="Center">
+                                        <mi:MaterialIcon Width="14" Height="14">
+                                            <mi:MaterialIcon.Style>
+                                                <Style TargetType="mi:MaterialIcon">
+                                                    <Setter Property="Kind" Value="StarOutline" />
+                                                    <Setter Property="Foreground" Value="Gray" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                                            <Setter Property="Kind" Value="Star" />
+                                                            <Setter Property="Foreground" Value="#FFD700" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </mi:MaterialIcon.Style>
+                                        </mi:MaterialIcon>
+                                    </Button>
+
+                                    <!-- Bouton voyage -->
+                                    <Button Grid.Column="1"
+                                            Command="{Binding DataContext.TravelToZaapCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding Name}"
+                                            HorizontalContentAlignment="Left"
+                                            Padding="4,6,10,6"
+                                            BorderThickness="0" Background="Transparent"
+                                            Cursor="Hand">
+                                        <StackPanel Orientation="Horizontal">
+                                            <mi:MaterialIcon Kind="MapMarker" Width="14" Height="14" Margin="0,0,6,0"
+                                                             Foreground="#2196F3" />
+                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="13" />
+                                            <TextBlock Text="{Binding Coordinates}" VerticalAlignment="Center"
+                                                       FontSize="13" Foreground="Gray" Margin="6,0,0,0" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </TabItem>
+        </TabControl>
     </DockPanel>
 </Window>
