@@ -115,6 +115,14 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _pasteToChatAlwaysLeader;
 
+    // --- Havre-sac ---
+
+    [ObservableProperty]
+    private uint _havreSacKeyVirtualKeyCode = 0x48; // VK_H
+
+    [ObservableProperty]
+    private string _havreSacKeyDisplay = "H";
+
     public string PushToBroadcastButtonText => IsListening ? "Désactiver" : "Activer";
     public string PushToBroadcastIndicator => IsArmed
         ? $"{BroadcastKeyDisplay} maintenu"
@@ -166,6 +174,19 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     partial void OnPasteToChatAlwaysLeaderChanged(bool value)
     {
+        UpdateSessionSnapshot();
+    }
+
+    partial void OnHavreSacKeyVirtualKeyCodeChanged(uint value)
+    {
+        if (_applyingProfile) return;
+        _groupInviteService.HavreSacKeyCode = (ushort)value;
+        UpdateSessionSnapshot();
+    }
+
+    partial void OnHavreSacKeyDisplayChanged(string value)
+    {
+        if (_applyingProfile) return;
         UpdateSessionSnapshot();
     }
 
@@ -223,6 +244,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         InitializeGlobalHotkeys(defaultConfig);
         InitializeChatOpenKey(defaultConfig.ChatOpenKey);
         InitializeBroadcastKey(defaultConfig.BroadcastKey);
+        InitializeHavreSacKey(defaultConfig.HavreSacKey);
 
         // Polling actif par défaut
         _detectionService.StartPolling();
@@ -288,6 +310,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             InitializeGlobalHotkeys(appState.LastHotkeyConfig);
             InitializeChatOpenKey(appState.LastHotkeyConfig.ChatOpenKey);
             InitializeBroadcastKey(appState.LastHotkeyConfig.BroadcastKey);
+            InitializeHavreSacKey(appState.LastHotkeyConfig.HavreSacKey);
             ReturnToLeaderAfterBroadcast = appState.LastHotkeyConfig.ReturnToLeaderAfterBroadcast;
             _pushToBroadcastService.ReturnToLeaderAfterBroadcast = ReturnToLeaderAfterBroadcast;
             BroadcastDelayMs = appState.LastHotkeyConfig.BroadcastDelayMs;
@@ -638,6 +661,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         InitializeGlobalHotkeys(defaults);
         InitializeChatOpenKey(defaults.ChatOpenKey);
         InitializeBroadcastKey(defaults.BroadcastKey);
+        InitializeHavreSacKey(defaults.HavreSacKey);
         ReturnToLeaderAfterBroadcast = false;
         _pushToBroadcastService.ReturnToLeaderAfterBroadcast = false;
         BroadcastDelayMs = 65;
@@ -801,6 +825,43 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         }
     }
 
+    [RelayCommand]
+    private async Task SendAllToHavreSac()
+    {
+        var windows = _detectionService.DetectedWindows;
+        var leader = _focusService.CurrentLeader;
+
+        if (leader is null)
+        {
+            StatusText = "Aucun leader désigné — impossible d'envoyer au havre-sac";
+            return;
+        }
+
+        if (windows.Count == 0)
+        {
+            StatusText = "Aucune fenêtre détectée";
+            return;
+        }
+
+        StatusText = "Envoi au havre-sac en cours...";
+
+        try
+        {
+            var result = await _groupInviteService.SendAllToHavreSacAsync(windows, leader);
+            _dispatcher.Invoke(() =>
+            {
+                StatusText = result.Success
+                    ? $"Havre-sac : touche envoyée à {result.Invited} fenêtre(s)"
+                    : $"Havre-sac échoué : {result.ErrorMessage}";
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, "Erreur lors de l'envoi au havre-sac");
+            StatusText = $"Erreur : {ex.Message}";
+        }
+    }
+
     // ===== INTERNAL HELPERS =====
 
     private void OnWindowsChanged(object? sender, WindowsChangedEventArgs e)
@@ -931,6 +992,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 InitializeGlobalHotkeys(_sessionSnapshot.GlobalHotkeys);
                 InitializeChatOpenKey(_sessionSnapshot.GlobalHotkeys.ChatOpenKey);
                 InitializeBroadcastKey(_sessionSnapshot.GlobalHotkeys.BroadcastKey);
+                InitializeHavreSacKey(_sessionSnapshot.GlobalHotkeys.HavreSacKey);
                 ReturnToLeaderAfterBroadcast = _sessionSnapshot.GlobalHotkeys.ReturnToLeaderAfterBroadcast;
                 _pushToBroadcastService.ReturnToLeaderAfterBroadcast = ReturnToLeaderAfterBroadcast;
                 BroadcastDelayMs = _sessionSnapshot.GlobalHotkeys.BroadcastDelayMs;
@@ -1236,6 +1298,22 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void InitializeHavreSacKey(HotkeyBindingConfig config)
+    {
+        if (config.VirtualKeyCode != 0)
+        {
+            HavreSacKeyVirtualKeyCode = config.VirtualKeyCode;
+            HavreSacKeyDisplay = config.DisplayName;
+        }
+        else
+        {
+            // Fallback vers H si la config est vide (profil legacy)
+            HavreSacKeyVirtualKeyCode = 0x48;
+            HavreSacKeyDisplay = "H";
+        }
+        _groupInviteService.HavreSacKeyCode = (ushort)HavreSacKeyVirtualKeyCode;
+    }
+
     private void InitializeGlobalHotkeys(GlobalHotkeyConfig config)
     {
         GlobalHotkeys.Clear();
@@ -1335,6 +1413,12 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                     DisplayName = BroadcastKeyDisplay,
                     Modifiers = 0,
                     VirtualKeyCode = BroadcastKeyVirtualKeyCode
+                },
+                HavreSacKey = new HotkeyBindingConfig
+                {
+                    DisplayName = HavreSacKeyDisplay,
+                    Modifiers = 0,
+                    VirtualKeyCode = HavreSacKeyVirtualKeyCode
                 },
                 ReturnToLeaderAfterBroadcast = ReturnToLeaderAfterBroadcast,
                 BroadcastDelayMs = BroadcastDelayMs,
@@ -1440,6 +1524,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             InitializeGlobalHotkeys(profile.GlobalHotkeys);
             InitializeChatOpenKey(profile.GlobalHotkeys.ChatOpenKey);
             InitializeBroadcastKey(profile.GlobalHotkeys.BroadcastKey);
+            InitializeHavreSacKey(profile.GlobalHotkeys.HavreSacKey);
             ReturnToLeaderAfterBroadcast = profile.GlobalHotkeys.ReturnToLeaderAfterBroadcast;
             _pushToBroadcastService.ReturnToLeaderAfterBroadcast = ReturnToLeaderAfterBroadcast;
             BroadcastDelayMs = profile.GlobalHotkeys.BroadcastDelayMs;

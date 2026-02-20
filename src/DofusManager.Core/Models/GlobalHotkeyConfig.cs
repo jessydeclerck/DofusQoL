@@ -76,9 +76,20 @@ public class GlobalHotkeyConfig
     /// </summary>
     public bool PasteToChatAlwaysLeader { get; set; }
 
+    /// <summary>
+    /// Touche configurée dans Dofus pour le havre-sac (défaut : H).
+    /// Seul VirtualKeyCode est utilisé (pas de modifiers — c'est une touche simple).
+    /// </summary>
+    public HotkeyBindingConfig HavreSacKey { get; set; } = new()
+    {
+        DisplayName = "H",
+        VirtualKeyCode = VK_H
+    };
+
     private const uint VK_TAB = 0x09;
     private const uint VK_MENU = 0x12;
     private const uint VK_SPACE = 0x20;
+    private const uint VK_H = 0x48;
     private const uint VK_OEM_3 = 0xC0; // touche ` (backtick)
     private const uint VK_F1 = 0x70;
 
@@ -122,6 +133,11 @@ public class GlobalHotkeyConfig
         {
             DisplayName = "Alt",
             VirtualKeyCode = VK_MENU
+        },
+        HavreSacKey = new HotkeyBindingConfig
+        {
+            DisplayName = "H",
+            VirtualKeyCode = VK_H
         }
     };
 }
