@@ -86,6 +86,31 @@ public class GlobalHotkeyConfig
         VirtualKeyCode = VK_H
     };
 
+    /// <summary>
+    /// Coordonnée X (client) du clic sur le Zaap NPC dans le havre-sac.
+    /// </summary>
+    public int ZaapClickX { get; set; }
+
+    /// <summary>
+    /// Coordonnée Y (client) du clic sur le Zaap NPC dans le havre-sac.
+    /// </summary>
+    public int ZaapClickY { get; set; }
+
+    /// <summary>
+    /// Délai (ms) après l'ouverture du havre-sac avant de cliquer sur le Zaap.
+    /// </summary>
+    public int ZaapHavreSacDelayMs { get; set; } = 2000;
+
+    /// <summary>
+    /// Délai (ms) après le clic Zaap avant de taper le nom du territoire.
+    /// </summary>
+    public int ZaapInterfaceDelayMs { get; set; } = 1500;
+
+    /// <summary>
+    /// Noms des territoires Zaap marqués comme favoris.
+    /// </summary>
+    public List<string> FavoriteZaaps { get; set; } = [];
+
     private const uint VK_TAB = 0x09;
     private const uint VK_MENU = 0x12;
     private const uint VK_SPACE = 0x20;

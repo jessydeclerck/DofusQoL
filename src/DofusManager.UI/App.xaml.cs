@@ -45,6 +45,7 @@ public partial class App : Application
         services.AddSingleton<IBroadcastService, BroadcastService>();
         services.AddSingleton<IPushToBroadcastService, PushToBroadcastService>();
         services.AddSingleton<IGroupInviteService, GroupInviteService>();
+        services.AddSingleton<IZaapTravelService, ZaapTravelService>();
 
         // ViewModel unifié
         services.AddSingleton<DashboardViewModel>();
