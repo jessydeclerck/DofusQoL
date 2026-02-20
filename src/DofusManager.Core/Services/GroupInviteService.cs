@@ -12,6 +12,9 @@ public class GroupInviteService : IGroupInviteService
     private const ushort VK_CONTROL = 0x11;
     private const ushort VK_V = 0x56;
     private const ushort VK_W = 0x57;
+    private const ushort VK_H = 0x48;
+    private const uint WM_KEYDOWN = 0x0100;
+    private const uint WM_KEYUP = 0x0101;
     private const int DelayBetweenInvites = 300;
     private const int DelayBetweenFollows = 200;
     private const int FocusDelayMs = 100;
@@ -20,6 +23,7 @@ public class GroupInviteService : IGroupInviteService
     private readonly IWin32WindowHelper _windowHelper;
 
     public ushort ChatOpenKeyCode { get; set; } = VK_SPACE;
+    public ushort HavreSacKeyCode { get; set; } = VK_H;
 
     public GroupInviteService(IWin32WindowHelper windowHelper)
     {
@@ -209,6 +213,37 @@ public class GroupInviteService : IGroupInviteService
 
         Logger.Information("[PASTE-CHAT] {Count} fenêtre(s) collées", pasted);
         return new GroupInviteResult { Success = true, Invited = pasted };
+    }
+
+    public async Task<GroupInviteResult> SendAllToHavreSacAsync(IReadOnlyList<DofusWindow> windows, DofusWindow leader)
+    {
+        if (windows.Count == 0)
+            return new GroupInviteResult { Success = false, ErrorMessage = "Aucune fenêtre détectée" };
+
+        var sent = 0;
+
+        foreach (var window in windows)
+        {
+            var focused = await FocusWithRetryAsync(window.Handle);
+            if (!focused)
+            {
+                Logger.Warning("[HAVRESAC] Focus échoué pour {Handle}, skip", window.Handle);
+                continue;
+            }
+
+            _windowHelper.SendKeyPress(HavreSacKeyCode);
+            sent++;
+
+            Logger.Information("[HAVRESAC] Touche envoyée à {Handle}", window.Handle);
+
+            await Task.Delay(DelayBetweenFollows);
+        }
+
+        // Restaurer le focus sur le leader
+        _windowHelper.FocusWindow(leader.Handle);
+
+        Logger.Information("[HAVRESAC] Touche envoyée à {Count}/{Total} fenêtre(s)", sent, windows.Count);
+        return new GroupInviteResult { Success = true, Invited = sent };
     }
 
     private async Task<bool> FocusWithRetryAsync(nint handle)

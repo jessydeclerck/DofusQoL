@@ -501,4 +501,95 @@ public class GroupInviteServiceTests
         Assert.Equal("ENTER", callOrder[2]);
         Assert.DoesNotContain("SPACE", callOrder);
     }
+
+    // --- SendAllToHavreSacAsync ---
+
+    private const ushort VK_H = 0x48;
+
+    [Fact]
+    public async Task SendAllToHavreSacAsync_SendsKeyToAllWindows()
+    {
+        var windows = CreateWindows("Leader", "Perso2", "Perso3");
+        var leader = windows[0];
+
+        var result = await _service.SendAllToHavreSacAsync(windows, leader);
+
+        Assert.True(result.Success);
+        Assert.Equal(3, result.Invited);
+        _mockHelper.Verify(h => h.SendKeyPress(VK_H), Times.Exactly(3));
+    }
+
+    [Fact]
+    public async Task SendAllToHavreSacAsync_EmptyWindows_ReturnsFailure()
+    {
+        var leader = CreateWindows("Leader")[0];
+
+        var result = await _service.SendAllToHavreSacAsync(new List<DofusWindow>(), leader);
+
+        Assert.False(result.Success);
+        Assert.Contains("Aucune fenêtre", result.ErrorMessage!);
+    }
+
+    [Fact]
+    public async Task SendAllToHavreSacAsync_SkipsFocusFailedWindows()
+    {
+        var windows = CreateWindows("Leader", "Perso2");
+        var leader = windows[0];
+
+        // Perso2 (handle 200) ne peut pas être focusé
+        _mockHelper.Setup(h => h.FocusWindow((nint)200)).Returns(true);
+        _mockHelper.Setup(h => h.GetForegroundWindow()).Returns((nint)100); // focus reste sur leader
+
+        var result = await _service.SendAllToHavreSacAsync(windows, leader);
+
+        Assert.True(result.Success);
+        // Seul le leader réussit (handle 100 = foreground par défaut via setup)
+        Assert.Equal(1, result.Invited);
+    }
+
+    [Fact]
+    public async Task SendAllToHavreSacAsync_UsesCustomKeyCode()
+    {
+        const ushort customKey = 0x54; // 'T'
+        _service.HavreSacKeyCode = customKey;
+
+        var windows = CreateWindows("Perso1");
+        var leader = windows[0];
+
+        var result = await _service.SendAllToHavreSacAsync(windows, leader);
+
+        Assert.True(result.Success);
+        _mockHelper.Verify(h => h.SendKeyPress(customKey), Times.Once);
+    }
+
+    [Fact]
+    public async Task SendAllToHavreSacAsync_FocusesEachWindow()
+    {
+        var windows = CreateWindows("Leader", "Perso2", "Perso3");
+        var leader = windows[0];
+
+        await _service.SendAllToHavreSacAsync(windows, leader);
+
+        foreach (var w in windows)
+        {
+            _mockHelper.Verify(h => h.FocusWindow(w.Handle), Times.AtLeastOnce);
+        }
+    }
+
+    [Fact]
+    public async Task SendAllToHavreSacAsync_RestoresFocusToLeader()
+    {
+        var windows = CreateWindows("Leader", "Perso2");
+        var leader = windows[0];
+
+        await _service.SendAllToHavreSacAsync(windows, leader);
+
+        // Le dernier appel à FocusWindow doit être pour le leader
+        var calls = _mockHelper.Invocations
+            .Where(i => i.Method.Name == nameof(IWin32WindowHelper.FocusWindow))
+            .Select(i => (nint)i.Arguments[0])
+            .ToList();
+
+        Assert.Equal(leader.Handle, calls.Last());
+    }
 }
