@@ -150,6 +150,9 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private int _zaapInterfaceDelayMs = 1500;
 
     [ObservableProperty]
+    private bool _zaapAutofollowAfterTravel;
+
+    [ObservableProperty]
     private string _zaapFilterText = string.Empty;
 
     [ObservableProperty]
@@ -255,6 +258,12 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         UpdateSessionSnapshot();
     }
 
+    partial void OnZaapAutofollowAfterTravelChanged(bool value)
+    {
+        if (_applyingProfile) return;
+        UpdateSessionSnapshot();
+    }
+
     partial void OnZaapFilterTextChanged(string value)
     {
         RefreshFilteredTerritories();
@@ -266,7 +275,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         var filter = ZaapFilterText;
         var territories = string.IsNullOrWhiteSpace(filter)
             ? ZaapTerritories.All
-            : ZaapTerritories.All.Where(z => z.Name.Contains(filter, StringComparison.OrdinalIgnoreCase));
+            : ZaapTerritories.All.Where(z => z.DisplayName.Contains(filter, StringComparison.OrdinalIgnoreCase));
 
         var items = territories
             .Select(z => new ZaapTerritoryItem { Territory = z, IsFavorite = _favoriteZaapNames.Contains(z.Name) })
@@ -1078,6 +1087,14 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         try
         {
             var result = await _zaapTravelService.TravelToZaapAsync(windows, leader, territoryName);
+
+            if (result.Success && ZaapAutofollowAfterTravel)
+            {
+                await Task.Delay(500);
+                _windowHelper.SendKeyCombination(0x11, 0x57); // Ctrl+W
+                Logger.Information("[ZAAP] Autofollow envoyé au leader après voyage");
+            }
+
             _dispatcher.Invoke(() =>
             {
                 StatusText = result.Success
@@ -1578,6 +1595,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         _zaapTravelService.HavreSacDelayMs = config.ZaapHavreSacDelayMs;
         _zaapTravelService.ZaapInterfaceDelayMs = config.ZaapInterfaceDelayMs;
 
+        ZaapAutofollowAfterTravel = config.ZaapAutofollowAfterTravel;
+
         _favoriteZaapNames.Clear();
         foreach (var name in config.FavoriteZaaps)
             _favoriteZaapNames.Add(name);
@@ -1700,7 +1719,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 ZaapClickY = ZaapClickY,
                 ZaapHavreSacDelayMs = ZaapHavreSacDelayMs,
                 ZaapInterfaceDelayMs = ZaapInterfaceDelayMs,
-                FavoriteZaaps = _favoriteZaapNames.ToList()
+                FavoriteZaaps = _favoriteZaapNames.ToList(),
+                ZaapAutofollowAfterTravel = ZaapAutofollowAfterTravel
             };
         }
 
@@ -1956,6 +1976,7 @@ public partial class ZaapTerritoryItem : ObservableObject
     private bool _isFavorite;
 
     public string Name => Territory.Name;
+    public string DisplayName => Territory.DisplayName;
     public int X => Territory.X;
     public int Y => Territory.Y;
     public string Coordinates => Territory.Coordinates;

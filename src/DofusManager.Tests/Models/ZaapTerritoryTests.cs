@@ -47,16 +47,29 @@ public class ZaapTerritoryTests
     }
 
     [Fact]
+    public void All_AllTerritoriesHaveNonEmptyRegions()
+    {
+        Assert.All(ZaapTerritories.All, z => Assert.False(string.IsNullOrWhiteSpace(z.Region)));
+    }
+
+    [Fact]
+    public void DisplayName_IncludesNameAndRegion()
+    {
+        var territory = new ZaapTerritory { Name = "Cité d'Astrub", Region = "Astrub", X = 5, Y = -18 };
+        Assert.Equal("Cité d'Astrub (Astrub)", territory.DisplayName);
+    }
+
+    [Fact]
     public void Coordinates_FormatsCorrectly()
     {
-        var territory = new ZaapTerritory { Name = "Test", X = 5, Y = -18 };
+        var territory = new ZaapTerritory { Name = "Test", Region = "TestRegion", X = 5, Y = -18 };
         Assert.Equal("[5,-18]", territory.Coordinates);
     }
 
     [Fact]
     public void Coordinates_NegativeValues()
     {
-        var territory = new ZaapTerritory { Name = "Test", X = -27, Y = -36 };
+        var territory = new ZaapTerritory { Name = "Test", Region = "TestRegion", X = -27, Y = -36 };
         Assert.Equal("[-27,-36]", territory.Coordinates);
     }
 
@@ -68,12 +81,13 @@ public class ZaapTerritoryTests
     }
 
     [Theory]
-    [InlineData("Cité d'Astrub", 5, -18)]
-    [InlineData("La Bourgade", -78, -41)]
-    [InlineData("Sufokia", 13, 26)]
-    public void All_HasCorrectCoordinates(string name, int expectedX, int expectedY)
+    [InlineData("Cité d'Astrub", "Astrub", 5, -18)]
+    [InlineData("La Bourgade", "Île de Frigost", -78, -41)]
+    [InlineData("Sufokia", "Baie de Sufokia", 13, 26)]
+    public void All_HasCorrectData(string name, string expectedRegion, int expectedX, int expectedY)
     {
         var territory = ZaapTerritories.All.First(z => z.Name == name);
+        Assert.Equal(expectedRegion, territory.Region);
         Assert.Equal(expectedX, territory.X);
         Assert.Equal(expectedY, territory.Y);
     }
