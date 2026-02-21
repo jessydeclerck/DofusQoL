@@ -490,6 +490,9 @@
                                     <Run Text="ms" />
                                 </TextBlock>
                             </StackPanel>
+                            <CheckBox Content="Autofollow le leader après voyage (Ctrl+W)"
+                                      IsChecked="{Binding ZaapAutofollowAfterTravel}"
+                                      Margin="5,4,5,4" />
                         </StackPanel>
                     </GroupBox>
 
@@ -560,7 +563,7 @@
                                         <StackPanel Orientation="Horizontal">
                                             <mi:MaterialIcon Kind="MapMarker" Width="14" Height="14" Margin="0,0,6,0"
                                                              Foreground="#2196F3" />
-                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="13" />
+                                            <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" FontSize="13" />
                                             <TextBlock Text="{Binding Coordinates}" VerticalAlignment="Center"
                                                        FontSize="13" Foreground="Gray" Margin="6,0,0,0" />
                                         </StackPanel>

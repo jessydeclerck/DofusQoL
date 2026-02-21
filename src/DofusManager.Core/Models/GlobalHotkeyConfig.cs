@@ -111,6 +111,11 @@ public class GlobalHotkeyConfig
     /// </summary>
     public List<string> FavoriteZaaps { get; set; } = [];
 
+    /// <summary>
+    /// Si true, envoie Ctrl+W au leader après un voyage Zaap pour activer l'autofollow.
+    /// </summary>
+    public bool ZaapAutofollowAfterTravel { get; set; }
+
     private const uint VK_TAB = 0x09;
     private const uint VK_MENU = 0x12;
     private const uint VK_SPACE = 0x20;
