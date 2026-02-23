@@ -26,7 +26,7 @@ public static class ZaapTerritories
         new() { Name = "Crocuzko", Region = "Archipel des Écailles", X = -83, Y = -15 },
         new() { Name = "Dunes des ossements", Region = "Saharach", X = 15, Y = -58 },
         new() { Name = "Entrée du château de Harebourg", Region = "Île de Frigost", X = -67, Y = -77 },
-        new() { Name = "Foire de Trool", Region = "Foire de Trool", X = -11, Y = -36 },
+        new() { Name = "Foire du Trool", Region = "Foire du Trool", X = -11, Y = -36 },
         new() { Name = "Futaie enneigée", Region = "Archipel de Valonia", X = 39, Y = -82 },
         new() { Name = "Île de la Cawotte", Region = "Île des Wabbits", X = 25, Y = -4 },
         new() { Name = "La Bourgade", Region = "Île de Frigost", X = -78, Y = -41 },
