@@ -305,7 +305,16 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     // --- Mise à jour ---
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsUpdateBannerVisible))]
     private bool _isUpdateAvailable;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsUpdateBannerVisible))]
+    private bool _isUpdateDismissed;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CheckForUpdateButtonText))]
+    private bool _isCheckingForUpdate;
 
     [ObservableProperty]
     private string _updateVersionText = string.Empty;
@@ -317,6 +326,11 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private bool _isDownloadingUpdate;
 
     private UpdateInfo? _pendingUpdate;
+
+    public bool IsUpdateBannerVisible => IsUpdateAvailable && !IsUpdateDismissed;
+
+    public string CheckForUpdateButtonText =>
+        IsCheckingForUpdate ? "Vérification..." : "Vérifier les mises à jour";
 
     // --- Profils ---
 
@@ -587,6 +601,44 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             Logger.Error(ex, "Erreur lors de la mise à jour");
             StatusText = $"Erreur mise à jour : {ex.Message}";
             IsDownloadingUpdate = false;
+        }
+    }
+
+    [RelayCommand]
+    private void DismissUpdate() => IsUpdateDismissed = true;
+
+    [RelayCommand]
+    private async Task CheckForUpdateManualAsync()
+    {
+        IsCheckingForUpdate = true;
+        StatusText = "Vérification des mises à jour...";
+        try
+        {
+            var result = await _updateService.CheckForUpdateAsync();
+            if (result.IsUpdateAvailable && result.Update is not null)
+            {
+                _pendingUpdate = result.Update;
+                IsUpdateAvailable = true;
+                IsUpdateDismissed = false; // réafficher la bannière
+                UpdateVersionText = $"v{result.Update.Version}";
+            }
+            else if (result.ErrorMessage is not null)
+            {
+                StatusText = result.ErrorMessage;
+            }
+            else
+            {
+                StatusText = "Application à jour";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText = "Erreur lors de la vérification";
+            Logger.Error(ex, "Erreur check manuel");
+        }
+        finally
+        {
+            IsCheckingForUpdate = false;
         }
     }
 
