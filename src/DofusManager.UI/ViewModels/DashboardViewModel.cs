@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Reflection;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -54,6 +55,20 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     // Pick Zaap coords
     private DispatcherTimer? _pickModeTimer;
     private bool _pickMouseWasDown;
+
+    // --- Window title ---
+
+    public string WindowTitle { get; } = $"DofusManager v{GetAppVersion()}";
+
+    private static string GetAppVersion()
+    {
+        var info = Assembly.GetEntryAssembly()
+            ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+        if (info is null) return "?";
+        var plusIndex = info.IndexOf('+');
+        return plusIndex > 0 ? info[..plusIndex] : info;
+    }
 
     // --- Collections ---
 

@@ -30,6 +30,20 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DofusManager.Core\DofusManager.Core.csproj" />
+    <ProjectReference Include="..\DofusManager.Updater\DofusManager.Updater.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
   </ItemGroup>
+
+  <!-- Copier tous les fichiers du Updater dans le dossier de sortie du UI -->
+  <Target Name="CopyUpdater" AfterTargets="Build">
+    <ItemGroup>
+      <UpdaterFiles Include="..\DofusManager.Updater\bin\$(Configuration)\$(TargetFramework)\DofusManager.Updater.exe"
+                    Condition="Exists('..\DofusManager.Updater\bin\$(Configuration)\$(TargetFramework)\DofusManager.Updater.exe')" />
+      <UpdaterFiles Include="..\DofusManager.Updater\bin\$(Configuration)\$(TargetFramework)\DofusManager.Updater.dll"
+                    Condition="Exists('..\DofusManager.Updater\bin\$(Configuration)\$(TargetFramework)\DofusManager.Updater.dll')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(UpdaterFiles)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>

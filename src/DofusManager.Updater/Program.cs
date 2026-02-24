@@ -54,22 +54,36 @@ internal class Program
                 File.Move(mainExe, backupExe);
             }
 
-            // Étape 3 : extraire le zip en écrasant les fichiers existants
+            // Étape 3 : renommer l'updater (Windows permet le rename d'un exe en cours)
+            var updaterExe = Path.Combine(installDir, "DofusManager.Updater.exe");
+            var updaterOld = updaterExe + ".old";
+            if (File.Exists(updaterExe))
+            {
+                if (File.Exists(updaterOld))
+                    File.Delete(updaterOld);
+                File.Move(updaterExe, updaterOld);
+                LogInfo("Updater renommé en .old");
+            }
+
+            // Étape 4 : extraire le zip en écrasant les fichiers existants
             LogInfo($"Extraction de {zipPath} vers {installDir}");
             ZipFile.ExtractToDirectory(zipPath, installDir, overwriteFiles: true);
             LogInfo("Extraction terminée");
 
-            // Étape 4 : nettoyage
+            // Étape 5 : nettoyage
             if (File.Exists(backupExe))
             {
                 try { File.Delete(backupExe); }
                 catch { /* sera nettoyé la prochaine fois */ }
             }
 
+            try { File.Delete(updaterOld); }
+            catch { /* sera nettoyé la prochaine fois */ }
+
             try { File.Delete(zipPath); }
             catch { /* ignore */ }
 
-            // Étape 5 : lancer la nouvelle version
+            // Étape 6 : lancer la nouvelle version
             LogInfo("Lancement de la nouvelle version...");
             if (File.Exists(mainExe))
             {
