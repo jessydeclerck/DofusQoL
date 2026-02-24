@@ -25,6 +25,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private readonly IGroupInviteService _groupInviteService;
     private readonly IZaapTravelService _zaapTravelService;
     private readonly IWin32WindowHelper _windowHelper;
+    private readonly IUpdateService _updateService;
     private readonly Dispatcher _dispatcher;
 
     // Suivi du profil actif pour la persistance de session
@@ -286,6 +287,22 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             FilteredTerritories.Add(item);
     }
 
+    // --- Mise à jour ---
+
+    [ObservableProperty]
+    private bool _isUpdateAvailable;
+
+    [ObservableProperty]
+    private string _updateVersionText = string.Empty;
+
+    [ObservableProperty]
+    private double _downloadProgress;
+
+    [ObservableProperty]
+    private bool _isDownloadingUpdate;
+
+    private UpdateInfo? _pendingUpdate;
+
     // --- Profils ---
 
     [ObservableProperty]
@@ -319,7 +336,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         IPushToBroadcastService pushToBroadcastService,
         IGroupInviteService groupInviteService,
         IZaapTravelService zaapTravelService,
-        IWin32WindowHelper windowHelper)
+        IWin32WindowHelper windowHelper,
+        IUpdateService updateService)
     {
         _detectionService = detectionService;
         _hotkeyService = hotkeyService;
@@ -330,6 +348,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         _groupInviteService = groupInviteService;
         _zaapTravelService = zaapTravelService;
         _windowHelper = windowHelper;
+        _updateService = updateService;
         _dispatcher = Dispatcher.CurrentDispatcher;
 
         _detectionService.WindowsChanged += OnWindowsChanged;
@@ -492,6 +511,67 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             Logger.Error(ex, "Erreur lors de la sauvegarde de l'état de session");
+        }
+    }
+
+    // ===== MISE À JOUR =====
+
+    public async Task CheckForUpdateAsync()
+    {
+        try
+        {
+            var result = await _updateService.CheckForUpdateAsync();
+
+            if (result.IsUpdateAvailable && result.Update is not null)
+            {
+                _pendingUpdate = result.Update;
+                IsUpdateAvailable = true;
+                UpdateVersionText = $"v{result.Update.Version}";
+                Logger.Information("Mise à jour détectée : {Version}", result.Update.Version);
+            }
+            else if (result.ErrorMessage is not null)
+            {
+                Logger.Warning("Vérification mise à jour : {Error}", result.ErrorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, "Erreur lors de la vérification de mise à jour");
+        }
+    }
+
+    [RelayCommand]
+    private async Task ApplyUpdateAsync()
+    {
+        if (_pendingUpdate is null) return;
+
+        IsDownloadingUpdate = true;
+        StatusText = "Téléchargement de la mise à jour...";
+
+        try
+        {
+            var progress = new Progress<double>(p =>
+            {
+                _dispatcher.Invoke(() =>
+                {
+                    DownloadProgress = p;
+                    StatusText = $"Téléchargement : {p:P0}";
+                });
+            });
+
+            var zipPath = await _updateService.DownloadUpdateAsync(_pendingUpdate, progress);
+
+            StatusText = "Installation de la mise à jour...";
+            await SaveSessionStateAsync();
+
+            var installDir = AppContext.BaseDirectory;
+            _updateService.LaunchUpdaterAndExit(zipPath, installDir);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, "Erreur lors de la mise à jour");
+            StatusText = $"Erreur mise à jour : {ex.Message}";
+            IsDownloadingUpdate = false;
         }
     }
 

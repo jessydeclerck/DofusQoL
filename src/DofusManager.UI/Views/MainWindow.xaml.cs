@@ -30,6 +30,9 @@ public partial class MainWindow : Window
 
         _viewModel.InitializeHotkeys(hwnd);
         await _viewModel.InitializeProfilesAsync();
+
+        // Vérification de mise à jour (non-bloquante)
+        _ = _viewModel.CheckForUpdateAsync();
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)

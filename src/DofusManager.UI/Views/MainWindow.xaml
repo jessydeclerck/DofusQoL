@@ -27,6 +27,52 @@
             </StatusBarItem>
         </StatusBar>
 
+        <!-- Barre de mise à jour -->
+        <Border DockPanel.Dock="Top" Background="#2196F3" Padding="8,6"
+                Visibility="{Binding IsUpdateAvailable, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <mi:MaterialIcon Kind="Update" Width="16" Height="16" Foreground="White" Margin="0,0,6,0" />
+                    <TextBlock Foreground="White" FontWeight="SemiBold" VerticalAlignment="Center">
+                        <Run Text="Nouvelle version" />
+                        <Run Text="{Binding UpdateVersionText, Mode=OneWay}" />
+                        <Run Text="disponible" />
+                    </TextBlock>
+                </StackPanel>
+
+                <ProgressBar Grid.Column="1" Value="{Binding DownloadProgress}"
+                             Minimum="0" Maximum="1" Height="4" Margin="12,0"
+                             Visibility="{Binding IsDownloadingUpdate, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                <Button Grid.Column="2" Command="{Binding ApplyUpdateAsyncCommand}"
+                        Padding="10,3" Cursor="Hand">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Background" Value="#1976D2" />
+                            <Setter Property="Foreground" Value="White" />
+                            <Setter Property="BorderBrush" Value="#1565C0" />
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDownloadingUpdate}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <StackPanel Orientation="Horizontal">
+                        <mi:MaterialIcon Kind="Download" Width="14" Height="14" Foreground="White" Margin="0,0,4,0" />
+                        <TextBlock Text="Mettre à jour" Foreground="White" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
         <TabControl>
             <!-- ===== ONGLET GENERAL ===== -->
             <TabItem>
