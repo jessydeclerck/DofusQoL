@@ -194,13 +194,17 @@ public class UpdateService : IUpdateService
             throw new FileNotFoundException("Updater introuvable", updaterPath);
         }
 
-        Logger.Information("Lancement updater : PID={Pid}, Zip={Zip}, Dir={Dir}", currentPid, zipPath, installDirectory);
+        // TrimEnd '\' pour éviter que le backslash final échappe le guillemet dans les arguments
+        var installDir = installDirectory.TrimEnd('\\');
 
+        Logger.Information("Lancement updater : PID={Pid}, Zip={Zip}, Dir={Dir}", currentPid, zipPath, installDir);
+
+        // UseShellExecute = true pour détacher du Job Object (sinon Rider/VS tuent le processus enfant)
         Process.Start(new ProcessStartInfo
         {
             FileName = updaterPath,
-            Arguments = $"\"{currentPid}\" \"{zipPath}\" \"{installDirectory}\"",
-            UseShellExecute = false
+            Arguments = $"\"{currentPid}\" \"{zipPath}\" \"{installDir}\"",
+            UseShellExecute = true
         });
 
         Environment.Exit(0);

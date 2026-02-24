@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:DofusManager.UI.Controls"
         xmlns:mi="clr-namespace:Material.Icons.WPF;assembly=Material.Icons.WPF"
-        Title="DofusManager" Height="620" Width="780"
+        Title="{Binding WindowTitle}" Height="620" Width="780"
         WindowStartupLocation="CenterScreen"
         Topmost="{Binding IsTopmost}"
         Icon="/Assets/app.ico">
@@ -50,7 +50,7 @@
                              Minimum="0" Maximum="1" Height="4" Margin="12,0"
                              Visibility="{Binding IsDownloadingUpdate, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-                <Button Grid.Column="2" Command="{Binding ApplyUpdateAsyncCommand}"
+                <Button Grid.Column="2" Command="{Binding ApplyUpdateCommand}"
                         Padding="10,3" Cursor="Hand">
                     <Button.Style>
                         <Style TargetType="Button">
