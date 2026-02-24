@@ -1619,7 +1619,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                         return;
                     }
                     var windows = new[] { targetWindow };
-                    var leader = _focusService.CurrentLeader;
+                    // Ne restaurer le focus au leader qu'en mode "toujours coller dans le leader"
+                    var leader = PasteToChatAlwaysLeader ? _focusService.CurrentLeader : null;
                     var result = await _groupInviteService.PasteToChatAsync(windows, leader, PasteToChatDoubleEnter, PasteToChatDoubleEnterDelayMs);
                     _dispatcher.Invoke(() =>
                     {
