@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using DofusManager.Core.Models;
 using Serilog;
@@ -13,6 +14,14 @@ public class UpdateService : IUpdateService
 
     private const string GitHubApiUrl = "https://api.github.com/repos/jessydeclerck/DofusQoL/releases/latest";
     private const string ZipAssetPrefix = "DofusQoL-";
+
+    private static string RuntimeIdentifier => RuntimeInformation.ProcessArchitecture switch
+    {
+        Architecture.X64 => "win-x64",
+        Architecture.X86 => "win-x86",
+        Architecture.Arm64 => "win-arm64",
+        _ => "win-x64"
+    };
 
     private readonly HttpClient _httpClient;
     private readonly Version _currentVersion;
@@ -88,7 +97,9 @@ public class UpdateService : IUpdateService
                 return UpdateCheckResult.UpToDate();
             }
 
-            // Chercher l'asset zip
+            // Chercher l'asset zip correspondant à l'architecture courante
+            var rid = RuntimeIdentifier;
+            var expectedSuffix = $"-{rid}.zip";
             string? downloadUrl = null;
             long sizeBytes = 0;
 
@@ -96,7 +107,7 @@ public class UpdateService : IUpdateService
             {
                 var name = asset.GetProperty("name").GetString() ?? "";
                 if (name.StartsWith(ZipAssetPrefix, StringComparison.OrdinalIgnoreCase) &&
-                    name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                    name.EndsWith(expectedSuffix, StringComparison.OrdinalIgnoreCase))
                 {
                     downloadUrl = asset.GetProperty("browser_download_url").GetString();
                     sizeBytes = asset.TryGetProperty("size", out var sizeProp) ? sizeProp.GetInt64() : 0;
@@ -106,8 +117,8 @@ public class UpdateService : IUpdateService
 
             if (downloadUrl is null)
             {
-                Logger.Warning("Aucun asset zip trouvé dans la release {Tag}", tagName);
-                return UpdateCheckResult.Error("Aucun fichier de mise à jour trouvé dans la release.");
+                Logger.Warning("Aucun asset zip trouvé pour {Rid} dans la release {Tag}", rid, tagName);
+                return UpdateCheckResult.Error($"Aucun fichier de mise à jour trouvé pour {rid}.");
             }
 
             var releaseNotes = root.TryGetProperty("body", out var bodyProp) ? bodyProp.GetString() : null;
