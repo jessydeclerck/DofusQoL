@@ -32,3 +32,4 @@ INPUT
 MapVirtualKey
 WindowFromPoint
 GetAncestor
+DeleteFile

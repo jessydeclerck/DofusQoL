@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using DofusManager.Core.Models;
 using Serilog;
+using Windows.Win32;
 
 namespace DofusManager.Core.Services;
 
@@ -210,6 +211,9 @@ public class UpdateService : IUpdateService
 
         Logger.Information("Lancement updater : PID={Pid}, Zip={Zip}, Dir={Dir}", currentPid, zipPath, installDir);
 
+        // Supprimer le Mark of the Web pour éviter le blocage SmartScreen
+        RemoveMarkOfTheWeb(updaterPath);
+
         // UseShellExecute = true pour détacher du Job Object (sinon Rider/VS tuent le processus enfant)
         Process.Start(new ProcessStartInfo
         {
@@ -219,5 +223,18 @@ public class UpdateService : IUpdateService
         });
 
         Environment.Exit(0);
+    }
+
+    private static void RemoveMarkOfTheWeb(string filePath)
+    {
+        try
+        {
+            PInvoke.DeleteFile(filePath + ":Zone.Identifier");
+            Logger.Debug("MOTW supprimé de {Path}", filePath);
+        }
+        catch (Exception ex)
+        {
+            Logger.Debug(ex, "Impossible de supprimer le MOTW de {Path}", filePath);
+        }
     }
 }
