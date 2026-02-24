@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Windows;
 using DofusManager.Core.Services;
 using DofusManager.Core.Win32;
@@ -46,6 +47,16 @@ public partial class App : Application
         services.AddSingleton<IPushToBroadcastService, PushToBroadcastService>();
         services.AddSingleton<IGroupInviteService, GroupInviteService>();
         services.AddSingleton<IZaapTravelService, ZaapTravelService>();
+
+        // Auto-update
+        services.AddSingleton(_ =>
+        {
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("DofusQoL-UpdateChecker");
+            client.Timeout = TimeSpan.FromSeconds(15);
+            return client;
+        });
+        services.AddSingleton<IUpdateService, UpdateService>();
 
         // ViewModel unifié
         services.AddSingleton<DashboardViewModel>();

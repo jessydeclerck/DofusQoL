@@ -23,13 +23,20 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      - name: Parse version number
+        id: version
+        shell: bash
+        run: |
+          VERSION="${{ inputs.version }}"
+          echo "number=${VERSION#v}" >> $GITHUB_OUTPUT
+
       - name: Restore dependencies
         run: dotnet restore DofusQoL.sln
 
       - name: Run tests
         run: dotnet test src/DofusManager.Tests/ --no-restore
 
-      - name: Publish
+      - name: Publish main app
         run: >
           dotnet publish src/DofusManager.UI/DofusManager.UI.csproj
           -c Release
@@ -38,7 +45,23 @@ jobs:
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:EnableCompressionInSingleFile=true
+          -p:Version=${{ steps.version.outputs.number }}
           -o publish
+
+      - name: Publish updater
+        run: >
+          dotnet publish src/DofusManager.Updater/DofusManager.Updater.csproj
+          -c Release
+          -r win-x64
+          --self-contained
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:Version=${{ steps.version.outputs.number }}
+          -o publish-updater
+
+      - name: Copy updater to publish folder
+        run: Copy-Item publish-updater/DofusManager.Updater.exe publish/
 
       - name: Create archive
         run: Compress-Archive -Path publish/* -DestinationPath DofusQoL-${{ inputs.version }}-win-x64.zip
