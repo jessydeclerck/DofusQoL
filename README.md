@@ -3,6 +3,8 @@
 Application Windows de quality of life pour le multi-compte Dofus.
 Gestion fenêtres OS uniquement — zero automation gameplay, zero injection, zero lecture memoire client.
 
+![DofusManager UI](UI%20dofus%20maanger.png)
+
 ## Fonctionnalites
 
 ### Navigation ultra-rapide entre les fenetres
