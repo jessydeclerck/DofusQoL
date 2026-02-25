@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using System.Reflection;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -924,6 +926,20 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         _activeProfileName = null;
         StatusText = "Raccourcis réinitialisés aux valeurs par défaut";
         Logger.Information("Raccourcis réinitialisés");
+    }
+
+    [RelayCommand]
+    private void OpenDataFolder()
+    {
+        var folder = Path.GetDirectoryName(_profileService.DefaultFilePath);
+        if (folder is not null && Directory.Exists(folder))
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = folder,
+                UseShellExecute = true
+            });
+        }
     }
 
     // ===== PUSH-TO-BROADCAST =====

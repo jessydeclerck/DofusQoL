@@ -497,6 +497,13 @@
                                         <TextBlock Text="Réinitialiser raccourcis" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
+
+                                <!-- Ouvrir dossier de données -->
+                                <Button Command="{Binding OpenDataFolderCommand}"
+                                        ToolTip="Ouvrir le dossier de données"
+                                        Padding="8,3" Margin="5,0,0,3">
+                                    <mi:MaterialIcon Kind="FolderCog" Width="14" Height="14" />
+                                </Button>
                             </WrapPanel>
                         </GroupBox>
 
