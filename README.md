@@ -80,4 +80,4 @@ Les images et assets graphiques lies a Dofus sont la propriete d'[Ankama Games](
 
 ## Licence
 
-Usage personnel.
+[MIT](LICENSE)
