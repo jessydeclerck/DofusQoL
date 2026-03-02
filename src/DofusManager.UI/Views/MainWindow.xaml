@@ -669,6 +669,40 @@
                     </ListBox>
                 </DockPanel>
             </TabItem>
+
+            <!-- ===== ONGLET DIVERS ===== -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <mi:MaterialIcon Kind="DotsHorizontalCircle" Width="16" Height="16" Margin="0,0,4,0" />
+                        <TextBlock Text="Divers" VerticalAlignment="Center" />
+                    </StackPanel>
+                </TabItem.Header>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="10">
+                    <StackPanel>
+                        <GroupBox Margin="0,0,0,8">
+                            <GroupBox.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <mi:MaterialIcon Kind="Sword" Width="18" Height="18" Margin="0,0,6,0" />
+                                    <TextBlock Text="Rappels de combat" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </GroupBox.Header>
+                            <StackPanel Margin="5,8,5,8">
+                                <CheckBox IsChecked="{Binding ShowCaptureAmeReminder}"
+                                          VerticalAlignment="Center">
+                                    <TextBlock TextWrapping="Wrap">
+                                        <Run Text="Rappel " />
+                                        <Run Text="Capture d'&#x00e2;me" FontWeight="SemiBold" Foreground="#FFB347" />
+                                        <Run Text=" &#x2014; affiche un bandeau permanent &#x00e0; l'&#x00e9;cran" />
+                                    </TextBlock>
+                                </CheckBox>
+                                <TextBlock Text="L'overlay est click-through et toujours au premier plan."
+                                           Foreground="Gray" FontSize="11" Margin="20,4,0,0" />
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
         </TabControl>
     </DockPanel>
 </Window>

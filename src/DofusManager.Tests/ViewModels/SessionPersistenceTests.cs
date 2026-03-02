@@ -520,4 +520,33 @@ public class SessionPersistenceTests : IDisposable
     {
         Assert.Equal(expected, DashboardViewModel.IsConnectingTitle(title));
     }
+
+    // --- Tests : ShowCaptureAmeReminder ---
+
+    [Fact]
+    public async Task Restore_ShowCaptureAmeReminder_True_IsRestoredOnViewModel()
+    {
+        var appState = new AppState { ShowCaptureAmeReminder = true };
+        _mockAppState.Setup(s => s.LoadAsync()).ReturnsAsync(appState);
+        _mockDetection.Setup(d => d.DetectedWindows).Returns(new List<DofusWindow>());
+        _mockProfile.Setup(p => p.GetAllProfiles()).Returns(new List<Profile>());
+
+        await _vm.InitializeProfilesAsync();
+
+        // Le ViewModel restaure la valeur (l'overlay ne s'affiche pas en contexte de test)
+        Assert.True(_vm.ShowCaptureAmeReminder);
+    }
+
+    [Fact]
+    public async Task Restore_ShowCaptureAmeReminder_Default_IsFalse()
+    {
+        var appState = new AppState();
+        _mockAppState.Setup(s => s.LoadAsync()).ReturnsAsync(appState);
+        _mockDetection.Setup(d => d.DetectedWindows).Returns(new List<DofusWindow>());
+        _mockProfile.Setup(p => p.GetAllProfiles()).Returns(new List<Profile>());
+
+        await _vm.InitializeProfilesAsync();
+
+        Assert.False(_vm.ShowCaptureAmeReminder);
+    }
 }

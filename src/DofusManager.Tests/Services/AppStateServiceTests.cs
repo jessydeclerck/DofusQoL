@@ -194,4 +194,26 @@ public class AppStateServiceTests : IDisposable
         Assert.NotNull(loaded);
         Assert.Null(loaded.SessionSnapshot);
     }
+
+    [Fact]
+    public async Task SaveAsync_PuisLoadAsync_ShowCaptureAmeReminder_Preserved()
+    {
+        var state = new AppState { ShowCaptureAmeReminder = true };
+        await _service.SaveAsync(state);
+
+        var loaded = await _service.LoadAsync();
+        Assert.NotNull(loaded);
+        Assert.True(loaded.ShowCaptureAmeReminder);
+    }
+
+    [Fact]
+    public async Task LoadAsync_AncienFormat_SansCaptureAme_DefaultFalse()
+    {
+        // Simuler un JSON ancien sans le champ ShowCaptureAmeReminder
+        await File.WriteAllTextAsync(_tempFile, """{"isTopmost":false,"activeProfileName":null}""");
+
+        var loaded = await _service.LoadAsync();
+        Assert.NotNull(loaded);
+        Assert.False(loaded.ShowCaptureAmeReminder);
+    }
 }

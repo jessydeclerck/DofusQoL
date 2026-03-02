@@ -23,6 +23,11 @@ public class AppState
     /// </summary>
     public bool IsTopmost { get; set; }
 
+    /// <summary>
+    /// Si true, l'overlay de rappel "Capture d'âme" est affiché en permanence.
+    /// </summary>
+    public bool ShowCaptureAmeReminder { get; set; }
+
     // Backward compat : ignoré au chargement si SessionSnapshot est présent
     public GlobalHotkeyConfig? LastHotkeyConfig { get; set; }
 }

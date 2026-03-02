@@ -353,6 +353,44 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     partial void OnIsTopmostChanged(bool value) => ScheduleAutoSave();
 
+    // --- Divers ---
+
+    [ObservableProperty]
+    private bool _showCaptureAmeReminder;
+
+    private Views.CaptureAmeOverlay? _captureAmeOverlay;
+
+    partial void OnShowCaptureAmeReminderChanged(bool value)
+    {
+        if (value)
+            ShowCaptureAmeOverlay();
+        else
+            HideCaptureAmeOverlay();
+        ScheduleAutoSave();
+    }
+
+    private void ShowCaptureAmeOverlay()
+    {
+        if (_captureAmeOverlay is not null) return;
+        if (System.Windows.Application.Current is null) return; // contexte de test
+        _dispatcher.Invoke(() =>
+        {
+            _captureAmeOverlay = new Views.CaptureAmeOverlay();
+            _captureAmeOverlay.Show();
+        });
+        Logger.Information("Overlay Capture d'âme affiché");
+    }
+
+    private void HideCaptureAmeOverlay()
+    {
+        _dispatcher.Invoke(() =>
+        {
+            _captureAmeOverlay?.Close();
+            _captureAmeOverlay = null;
+        });
+        Logger.Information("Overlay Capture d'âme masqué");
+    }
+
     // --- Status ---
 
     [ObservableProperty]
@@ -447,6 +485,9 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         // Restaurer la préférence Topmost
         IsTopmost = appState.IsTopmost;
 
+        // Restaurer la préférence Capture d'âme
+        ShowCaptureAmeReminder = appState.ShowCaptureAmeReminder;
+
         // Restaurer le snapshot de session (inclut ordre slots, leader, hotkeys)
         var snapshot = appState.SessionSnapshot;
         if (snapshot is not null)
@@ -535,7 +576,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             {
                 ActiveProfileName = _activeProfileName,
                 SessionSnapshot = snapshot,
-                IsTopmost = IsTopmost
+                IsTopmost = IsTopmost,
+                ShowCaptureAmeReminder = ShowCaptureAmeReminder
             };
             await _appStateService.SaveAsync(state);
         }
@@ -1571,7 +1613,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 {
                     ActiveProfileName = _activeProfileName,
                     SessionSnapshot = snapshot,
-                    IsTopmost = IsTopmost
+                    IsTopmost = IsTopmost,
+                    ShowCaptureAmeReminder = ShowCaptureAmeReminder
                 };
                 await _appStateService.SaveAsync(state);
                 Logger.Debug("Auto-save effectué");
@@ -2032,6 +2075,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         _pushToBroadcastService.BroadcastPerformed -= OnBroadcastPerformed;
         _autoSaveCts?.Cancel();
         _autoSaveCts?.Dispose();
+        HideCaptureAmeOverlay();
         StopAltPollTimer();
         StopPickMode();
         _hotkeyService.Dispose();

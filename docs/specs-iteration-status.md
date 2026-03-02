@@ -169,6 +169,15 @@
 - [x] Tests unitaires (4 nouveaux : Coordinates, HasCorrectCoordinates) — total 305
 - [x] Build OK, 305 tests passent
 
+## Onglet Divers — Rappel Capture d'âme
+- [x] `AppState.ShowCaptureAmeReminder` — propriété globale (pas profile-specific), backward-compatible
+- [x] `CaptureAmeOverlay.xaml` — overlay WPF flottant, click-through (WS_EX_TRANSPARENT via CsWin32), toujours au premier plan
+- [x] Design : bandeau semi-transparent sombre, texte orange/or "CAPTURE D'ÂME", animation pulse (opacité 1.0 → 0.45, 1.5s)
+- [x] CsWin32 ajouté au projet UI (GetWindowLong, SetWindowLong) — conforme à la règle "pas de DllImport manuel"
+- [x] `DashboardViewModel` — `ShowCaptureAmeReminder` avec show/hide overlay, persistance auto-save, restore au démarrage
+- [x] `MainWindow.xaml` — nouvel onglet "Divers" avec GroupBox "Rappels de combat" et CheckBox
+- [x] Tests unitaires (4 nouveaux : round-trip JSON, backward-compat, restore ViewModel true/false)
+
 ## Itération 5 — Session manager (F5)
 - À planifier
 
