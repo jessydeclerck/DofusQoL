@@ -41,10 +41,8 @@
   <!-- Copier tous les fichiers du Updater dans le dossier de sortie du UI -->
   <Target Name="CopyUpdater" AfterTargets="Build">
     <ItemGroup>
-      <UpdaterFiles Include="..\DofusManager.Updater\bin\$(Configuration)\$(TargetFramework)\DofusManager.Updater.exe"
-                    Condition="Exists('..\DofusManager.Updater\bin\$(Configuration)\$(TargetFramework)\DofusManager.Updater.exe')" />
-      <UpdaterFiles Include="..\DofusManager.Updater\bin\$(Configuration)\$(TargetFramework)\DofusManager.Updater.dll"
-                    Condition="Exists('..\DofusManager.Updater\bin\$(Configuration)\$(TargetFramework)\DofusManager.Updater.dll')" />
+      <UpdaterFiles Include="..\DofusManager.Updater\bin\$(Configuration)\$(TargetFramework)\DofusManager.Updater.*"
+                    Exclude="..\DofusManager.Updater\bin\$(Configuration)\$(TargetFramework)\DofusManager.Updater.pdb" />
     </ItemGroup>
     <Copy SourceFiles="@(UpdaterFiles)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
   </Target>

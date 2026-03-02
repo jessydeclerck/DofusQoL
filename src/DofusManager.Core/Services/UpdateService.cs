@@ -215,14 +215,42 @@ public class UpdateService : IUpdateService
         RemoveMarkOfTheWeb(updaterPath);
 
         // UseShellExecute = true pour détacher du Job Object (sinon Rider/VS tuent le processus enfant)
-        Process.Start(new ProcessStartInfo
+        var startInfo = new ProcessStartInfo
         {
             FileName = updaterPath,
             Arguments = $"\"{currentPid}\" \"{zipPath}\" \"{installDir}\"",
             UseShellExecute = true
-        });
+        };
+
+        // Élévation UAC uniquement si le répertoire d'installation n'est pas accessible en écriture
+        if (!HasWriteAccess(installDir))
+        {
+            Logger.Information("Répertoire non accessible en écriture, élévation UAC requise");
+            startInfo.Verb = "runas";
+        }
+
+        Process.Start(startInfo);
 
         Environment.Exit(0);
+    }
+
+    private static bool HasWriteAccess(string directory)
+    {
+        try
+        {
+            var testFile = Path.Combine(directory, $".write_test_{Guid.NewGuid():N}");
+            File.Create(testFile).Dispose();
+            File.Delete(testFile);
+            return true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
     }
 
     private static void RemoveMarkOfTheWeb(string filePath)

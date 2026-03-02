@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.IO.Compression;
 
 namespace DofusManager.Updater;
 
@@ -67,7 +66,7 @@ internal class Program
 
             // Étape 4 : extraire le zip en écrasant les fichiers existants
             LogInfo($"Extraction de {zipPath} vers {installDir}");
-            ZipFile.ExtractToDirectory(zipPath, installDir, overwriteFiles: true);
+            await ExtractZipWithTarAsync(zipPath, installDir);
             LogInfo("Extraction terminée");
 
             // Étape 5 : nettoyage
@@ -151,6 +150,31 @@ internal class Program
         {
             return false;
         }
+    }
+
+    private static async Task ExtractZipWithTarAsync(string zipPath, string destinationDir)
+    {
+        // Utiliser tar.exe du System32 (intégré à Windows 10 1903+) pour éviter la dépendance System.IO.Compression
+        var tarPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "tar.exe");
+        if (!File.Exists(tarPath))
+            throw new FileNotFoundException("tar.exe introuvable dans System32. Windows 10 1903+ requis.", tarPath);
+
+        using var process = new Process();
+        process.StartInfo = new ProcessStartInfo
+        {
+            FileName = tarPath,
+            Arguments = $"-xf \"{zipPath}\" -C \"{destinationDir}\"",
+            CreateNoWindow = true,
+            UseShellExecute = false,
+            RedirectStandardError = true
+        };
+
+        process.Start();
+        var stderr = await process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+
+        if (process.ExitCode != 0)
+            throw new InvalidOperationException($"tar.exe a échoué (code {process.ExitCode}) : {stderr.Trim()}");
     }
 
     private static void LogInfo(string message)
