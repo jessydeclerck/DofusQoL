@@ -17,25 +17,9 @@
         <Border.Effect>
             <DropShadowEffect Color="#FFB347" BlurRadius="18" Opacity="0.5" ShadowDepth="0" />
         </Border.Effect>
-        <Border.Triggers>
-            <EventTrigger RoutedEvent="Border.Loaded">
-                <BeginStoryboard>
-                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
-                        <DoubleAnimation
-                            Storyboard.TargetName="OverlayBorder"
-                            Storyboard.TargetProperty="Opacity"
-                            From="1.0" To="0.45"
-                            Duration="0:0:1.5">
-                            <DoubleAnimation.EasingFunction>
-                                <SineEase EasingMode="EaseInOut" />
-                            </DoubleAnimation.EasingFunction>
-                        </DoubleAnimation>
-                    </Storyboard>
-                </BeginStoryboard>
-            </EventTrigger>
-        </Border.Triggers>
 
-        <TextBlock Text="&#x2694;  CAPTURE D'&#x00C2;ME  &#x2694;"
+        <TextBlock x:Name="OverlayText"
+                   Text="&#x2694;  CAPTURE D'&#x00C2;ME  &#x2694;"
                    FontSize="20"
                    FontWeight="Bold"
                    Foreground="#FFB347"

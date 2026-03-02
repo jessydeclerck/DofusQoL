@@ -28,6 +28,31 @@ public class AppState
     /// </summary>
     public bool ShowCaptureAmeReminder { get; set; }
 
+    /// <summary>
+    /// Taille de police de l'overlay Capture d'âme (12–40). Default = 20.
+    /// </summary>
+    public double CaptureAmeFontSize { get; set; } = 20;
+
+    /// <summary>
+    /// Durée d'un cycle de clignotement en millisecondes (200–5000). Default = 1500.
+    /// </summary>
+    public int CaptureAmeBlinkMs { get; set; } = 1500;
+
+    /// <summary>
+    /// Si true, le panneau d'actions overlay est affiché.
+    /// </summary>
+    public bool ShowActionOverlay { get; set; }
+
+    /// <summary>
+    /// Position X (écran) du panneau d'actions overlay. Null = position par défaut.
+    /// </summary>
+    public double? ActionOverlayLeft { get; set; }
+
+    /// <summary>
+    /// Position Y (écran) du panneau d'actions overlay. Null = position par défaut.
+    /// </summary>
+    public double? ActionOverlayTop { get; set; }
+
     // Backward compat : ignoré au chargement si SessionSnapshot est présent
     public GlobalHotkeyConfig? LastHotkeyConfig { get; set; }
 }

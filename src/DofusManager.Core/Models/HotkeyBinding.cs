@@ -24,7 +24,10 @@ public enum HotkeyAction
     Broadcast,
 
     /// <summary>Colle le contenu du presse-papier dans le chat de chaque fenêtre.</summary>
-    PasteToChat
+    PasteToChat,
+
+    /// <summary>Affiche/masque le panneau d'actions overlay.</summary>
+    ToggleOverlay
 }
 
 /// <summary>

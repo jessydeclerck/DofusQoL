@@ -116,12 +116,19 @@ public class GlobalHotkeyConfig
     /// </summary>
     public bool ZaapAutofollowAfterTravel { get; set; }
 
+    /// <summary>
+    /// Raccourci pour afficher/masquer le panneau d'actions overlay.
+    /// Par défaut : Ctrl+F12.
+    /// </summary>
+    public HotkeyBindingConfig ToggleOverlay { get; set; } = new();
+
     private const uint VK_TAB = 0x09;
     private const uint VK_MENU = 0x12;
     private const uint VK_SPACE = 0x20;
     private const uint VK_H = 0x48;
     private const uint VK_OEM_3 = 0xC0; // touche ` (backtick)
     private const uint VK_F1 = 0x70;
+    private const uint VK_F12 = 0x7B;
 
     public static GlobalHotkeyConfig CreateDefault() => new()
     {
@@ -168,6 +175,12 @@ public class GlobalHotkeyConfig
         {
             DisplayName = "H",
             VirtualKeyCode = VK_H
+        },
+        ToggleOverlay = new HotkeyBindingConfig
+        {
+            DisplayName = "Ctrl+F12",
+            Modifiers = (uint)HotkeyModifiers.Control,
+            VirtualKeyCode = VK_F12
         }
     };
 }

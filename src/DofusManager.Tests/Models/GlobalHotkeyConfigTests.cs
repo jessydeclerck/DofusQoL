@@ -17,6 +17,7 @@ public class GlobalHotkeyConfigTests
         Assert.NotNull(config.LastWindow);
         Assert.NotNull(config.FocusLeader);
         Assert.NotNull(config.BroadcastKey);
+        Assert.NotNull(config.ToggleOverlay);
     }
 
     [Fact]
@@ -67,6 +68,16 @@ public class GlobalHotkeyConfigTests
         Assert.Equal("Alt", config.BroadcastKey.DisplayName);
         Assert.Equal(0u, config.BroadcastKey.Modifiers);
         Assert.Equal(0x12u, config.BroadcastKey.VirtualKeyCode); // VK_MENU
+    }
+
+    [Fact]
+    public void CreateDefault_ToggleOverlay_IsCtrlF12()
+    {
+        var config = GlobalHotkeyConfig.CreateDefault();
+
+        Assert.Equal("Ctrl+F12", config.ToggleOverlay.DisplayName);
+        Assert.Equal((uint)HotkeyModifiers.Control, config.ToggleOverlay.Modifiers);
+        Assert.Equal(0x7Bu, config.ToggleOverlay.VirtualKeyCode); // VK_F12
     }
 
     [Fact]

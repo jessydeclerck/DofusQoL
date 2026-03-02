@@ -698,6 +698,62 @@
                                 </CheckBox>
                                 <TextBlock Text="L'overlay est click-through et toujours au premier plan."
                                            Foreground="Gray" FontSize="11" Margin="20,4,0,0" />
+
+                                <!-- Taille de l'overlay -->
+                                <Grid Margin="20,10,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="40" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Taille" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <Slider Grid.Column="1"
+                                            Minimum="12" Maximum="40" TickFrequency="1" IsSnapToTickEnabled="True"
+                                            Value="{Binding CaptureAmeFontSize}"
+                                            VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="2" Text="{Binding CaptureAmeFontSize, StringFormat={}{0:0}}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                </Grid>
+
+                                <!-- Vitesse de clignotement -->
+                                <Grid Margin="20,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="40" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Blink" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <Slider Grid.Column="1"
+                                            Minimum="200" Maximum="5000" TickFrequency="100" IsSnapToTickEnabled="True"
+                                            Value="{Binding CaptureAmeBlinkMs}"
+                                            VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                        <TextBlock.Text>
+                                            <Binding Path="CaptureAmeBlinkMs" StringFormat="{}{0}ms" />
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </Grid>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Margin="0,0,0,8">
+                            <GroupBox.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <mi:MaterialIcon Kind="ViewDashboard" Width="18" Height="18" Margin="0,0,6,0" />
+                                    <TextBlock Text="Panneau d'actions" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </GroupBox.Header>
+                            <StackPanel Margin="5,8,5,8">
+                                <CheckBox IsChecked="{Binding ShowActionOverlay}"
+                                          VerticalAlignment="Center">
+                                    <TextBlock TextWrapping="Wrap">
+                                        <Run Text="Afficher le " />
+                                        <Run Text="panneau d'actions" FontWeight="SemiBold" Foreground="#2196F3" />
+                                        <Run Text=" &#x2014; boutons rapides au-dessus du jeu" />
+                                    </TextBlock>
+                                </CheckBox>
+                                <TextBlock Text="L'overlay est d&#x00e9;pla&#x00e7;able et ne vole pas le focus. Position sauvegard&#x00e9;e automatiquement."
+                                           Foreground="Gray" FontSize="11" Margin="20,4,0,0" />
                             </StackPanel>
                         </GroupBox>
                     </StackPanel>

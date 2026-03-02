@@ -218,6 +218,36 @@ public class AppStateServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task SaveAsync_PuisLoadAsync_ActionOverlay_Preserved()
+    {
+        var state = new AppState
+        {
+            ShowActionOverlay = true,
+            ActionOverlayLeft = 100.5,
+            ActionOverlayTop = 200.0
+        };
+        await _service.SaveAsync(state);
+
+        var loaded = await _service.LoadAsync();
+        Assert.NotNull(loaded);
+        Assert.True(loaded.ShowActionOverlay);
+        Assert.Equal(100.5, loaded.ActionOverlayLeft);
+        Assert.Equal(200.0, loaded.ActionOverlayTop);
+    }
+
+    [Fact]
+    public async Task LoadAsync_AncienFormat_SansActionOverlay_DefaultFalse()
+    {
+        await File.WriteAllTextAsync(_tempFile, """{"isTopmost":false}""");
+
+        var loaded = await _service.LoadAsync();
+        Assert.NotNull(loaded);
+        Assert.False(loaded.ShowActionOverlay);
+        Assert.Null(loaded.ActionOverlayLeft);
+        Assert.Null(loaded.ActionOverlayTop);
+    }
+
+    [Fact]
     public async Task SaveAsync_EcritureAtomique_FichierOriginalSurvitSiTmpPresent()
     {
         // Sauvegarder un état initial

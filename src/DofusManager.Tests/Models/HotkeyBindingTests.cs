@@ -64,7 +64,8 @@ public class HotkeyBindingTests
         Assert.Contains(HotkeyAction.PanicLeader, values);
         Assert.Contains(HotkeyAction.Broadcast, values);
         Assert.Contains(HotkeyAction.PasteToChat, values);
-        Assert.Equal(7, values.Length);
+        Assert.Contains(HotkeyAction.ToggleOverlay, values);
+        Assert.Equal(8, values.Length);
     }
 
     [Fact]

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -358,7 +359,83 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _showCaptureAmeReminder;
 
+    [ObservableProperty]
+    private double _captureAmeFontSize = 20;
+
+    [ObservableProperty]
+    private int _captureAmeBlinkMs = 1500;
+
     private Views.CaptureAmeOverlay? _captureAmeOverlay;
+
+    [ObservableProperty]
+    private bool _showActionOverlay;
+
+    [ObservableProperty]
+    private double? _actionOverlayLeft;
+
+    [ObservableProperty]
+    private double? _actionOverlayTop;
+
+    private Views.ActionOverlayWindow? _actionOverlayWindow;
+
+    partial void OnShowActionOverlayChanged(bool value)
+    {
+        if (value)
+            ShowActionOverlayWindow();
+        else
+            HideActionOverlayWindow();
+        ScheduleAutoSave();
+    }
+
+    partial void OnActionOverlayLeftChanged(double? value) => ScheduleAutoSave();
+    partial void OnActionOverlayTopChanged(double? value) => ScheduleAutoSave();
+
+    private void ShowActionOverlayWindow()
+    {
+        if (_actionOverlayWindow is not null) return;
+        if (System.Windows.Application.Current is null) return;
+        _dispatcher.Invoke(() =>
+        {
+            _actionOverlayWindow = new Views.ActionOverlayWindow();
+            _actionOverlayWindow.DataContext = this;
+
+            if (ActionOverlayLeft.HasValue && ActionOverlayTop.HasValue)
+            {
+                // Clamping aux limites d'écran virtuel (protection multi-écran)
+                var left = Math.Max(SystemParameters.VirtualScreenLeft,
+                    Math.Min(ActionOverlayLeft.Value, SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth - 60));
+                var top = Math.Max(SystemParameters.VirtualScreenTop,
+                    Math.Min(ActionOverlayTop.Value, SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight - 60));
+                _actionOverlayWindow.Left = left;
+                _actionOverlayWindow.Top = top;
+            }
+            else
+            {
+                var workArea = SystemParameters.WorkArea;
+                _actionOverlayWindow.Left = workArea.Right - 80;
+                _actionOverlayWindow.Top = workArea.Top + 100;
+            }
+
+            _actionOverlayWindow.Show();
+        });
+        Logger.Information("Action overlay affiché");
+    }
+
+    private void HideActionOverlayWindow()
+    {
+        _dispatcher.Invoke(() =>
+        {
+            _actionOverlayWindow?.Close();
+            _actionOverlayWindow = null;
+        });
+        Logger.Information("Action overlay masqué");
+    }
+
+    [RelayCommand]
+    private void ToggleCaptureAmeOverlay()
+    {
+        ShowCaptureAmeReminder = !ShowCaptureAmeReminder;
+    }
 
     partial void OnShowCaptureAmeReminderChanged(bool value)
     {
@@ -369,16 +446,34 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         ScheduleAutoSave();
     }
 
+    partial void OnCaptureAmeFontSizeChanged(double value)
+    {
+        if (ShowCaptureAmeReminder) RecreateCaptureAmeOverlay();
+        ScheduleAutoSave();
+    }
+
+    partial void OnCaptureAmeBlinkMsChanged(int value)
+    {
+        if (ShowCaptureAmeReminder) RecreateCaptureAmeOverlay();
+        ScheduleAutoSave();
+    }
+
+    private void RecreateCaptureAmeOverlay()
+    {
+        HideCaptureAmeOverlay();
+        ShowCaptureAmeOverlay();
+    }
+
     private void ShowCaptureAmeOverlay()
     {
         if (_captureAmeOverlay is not null) return;
         if (System.Windows.Application.Current is null) return; // contexte de test
         _dispatcher.Invoke(() =>
         {
-            _captureAmeOverlay = new Views.CaptureAmeOverlay();
+            _captureAmeOverlay = new Views.CaptureAmeOverlay(CaptureAmeFontSize, CaptureAmeBlinkMs);
             _captureAmeOverlay.Show();
         });
-        Logger.Information("Overlay Capture d'âme affiché");
+        Logger.Information("Overlay Capture d'âme affiché (fontSize={FontSize}, blinkMs={BlinkMs})", CaptureAmeFontSize, CaptureAmeBlinkMs);
     }
 
     private void HideCaptureAmeOverlay()
@@ -486,7 +581,14 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         IsTopmost = appState.IsTopmost;
 
         // Restaurer la préférence Capture d'âme
+        CaptureAmeFontSize = appState.CaptureAmeFontSize;
+        CaptureAmeBlinkMs = appState.CaptureAmeBlinkMs;
         ShowCaptureAmeReminder = appState.ShowCaptureAmeReminder;
+
+        // Restaurer le panneau d'actions overlay
+        ActionOverlayLeft = appState.ActionOverlayLeft;
+        ActionOverlayTop = appState.ActionOverlayTop;
+        ShowActionOverlay = appState.ShowActionOverlay;
 
         // Restaurer le snapshot de session (inclut ordre slots, leader, hotkeys)
         var snapshot = appState.SessionSnapshot;
@@ -577,7 +679,12 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 ActiveProfileName = _activeProfileName,
                 SessionSnapshot = snapshot,
                 IsTopmost = IsTopmost,
-                ShowCaptureAmeReminder = ShowCaptureAmeReminder
+                ShowCaptureAmeReminder = ShowCaptureAmeReminder,
+                CaptureAmeFontSize = CaptureAmeFontSize,
+                CaptureAmeBlinkMs = CaptureAmeBlinkMs,
+                ShowActionOverlay = ShowActionOverlay,
+                ActionOverlayLeft = ActionOverlayLeft,
+                ActionOverlayTop = ActionOverlayTop
             };
             await _appStateService.SaveAsync(state);
         }
@@ -1603,19 +1710,23 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         _autoSaveCts?.Dispose();
         var cts = new CancellationTokenSource();
         _autoSaveCts = cts;
+        var token = cts.Token; // Capturer le token avant Task.Run pour éviter ObjectDisposedException
 
         _ = Task.Run(async () =>
         {
             try
             {
-                await Task.Delay(AutoSaveDelay, cts.Token);
+                await Task.Delay(AutoSaveDelay, token);
                 var snapshot = _sessionSnapshot;
                 var state = new AppState
                 {
                     ActiveProfileName = _activeProfileName,
                     SessionSnapshot = snapshot,
                     IsTopmost = IsTopmost,
-                    ShowCaptureAmeReminder = ShowCaptureAmeReminder
+                    ShowCaptureAmeReminder = ShowCaptureAmeReminder,
+                    ShowActionOverlay = ShowActionOverlay,
+                    ActionOverlayLeft = ActionOverlayLeft,
+                    ActionOverlayTop = ActionOverlayTop
                 };
                 await _appStateService.SaveAsync(state);
                 Logger.Debug("Auto-save effectué");
@@ -1645,6 +1756,12 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     {
         _dispatcher.Invoke(() =>
         {
+            if (e.Binding.Action == HotkeyAction.ToggleOverlay)
+            {
+                ShowActionOverlay = !ShowActionOverlay;
+                return;
+            }
+
             if (e.Binding.Action == HotkeyAction.PasteToChat)
             {
                 StatusText = "Collage dans le chat en cours...";
@@ -1861,6 +1978,15 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             VirtualKeyCode = config.PasteToChat.VirtualKeyCode,
             HotkeyDisplay = config.PasteToChat.DisplayName
         });
+        GlobalHotkeys.Add(new GlobalHotkeyRowViewModel(this)
+        {
+            Label = "Toggle overlay",
+            Action = HotkeyAction.ToggleOverlay,
+            HotkeyId = GlobalHotkeyBaseId + 5,
+            HotkeyModifiers = config.ToggleOverlay.Modifiers,
+            VirtualKeyCode = config.ToggleOverlay.VirtualKeyCode,
+            HotkeyDisplay = config.ToggleOverlay.DisplayName
+        });
     }
 
     /// <summary>
@@ -1892,7 +2018,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         }
 
         // Sauvegarder les raccourcis globaux + touche broadcast
-        if (GlobalHotkeys.Count >= 5)
+        if (GlobalHotkeys.Count >= 6)
         {
             profile.GlobalHotkeys = new GlobalHotkeyConfig
             {
@@ -1901,6 +2027,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 LastWindow = ToBindingConfig(GlobalHotkeys[2]),
                 FocusLeader = ToBindingConfig(GlobalHotkeys[3]),
                 PasteToChat = ToBindingConfig(GlobalHotkeys[4]),
+                ToggleOverlay = ToBindingConfig(GlobalHotkeys[5]),
                 ChatOpenKey = new HotkeyBindingConfig
                 {
                     DisplayName = ChatOpenKeyDisplay,
@@ -2079,6 +2206,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         _autoSaveCts?.Cancel();
         _autoSaveCts?.Dispose();
         HideCaptureAmeOverlay();
+        HideActionOverlayWindow();
         StopAltPollTimer();
         StopPickMode();
         _hotkeyService.Dispose();

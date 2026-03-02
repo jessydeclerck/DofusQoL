@@ -178,6 +178,17 @@
 - [x] `MainWindow.xaml` — nouvel onglet "Divers" avec GroupBox "Rappels de combat" et CheckBox
 - [x] Tests unitaires (4 nouveaux : round-trip JSON, backward-compat, restore ViewModel true/false)
 
+## Onglet Divers — Panneau d'actions overlay
+- [x] `AppState.ShowActionOverlay`, `ActionOverlayLeft`, `ActionOverlayTop` — persistance globale, backward-compatible
+- [x] `HotkeyAction.ToggleOverlay` + `GlobalHotkeyConfig.ToggleOverlay` — raccourci Ctrl+F12 par défaut
+- [x] `ActionOverlayWindow.xaml` — panneau compact, 4 boutons icônes (capture d'âme, invite groupe, autofollow, havre-sac)
+- [x] Design : fond sombre semi-transparent, grip de drag, boutons avec hover highlight
+- [x] WS_EX_NOACTIVATE via CsWin32 — cliquable SANS voler le focus au jeu
+- [x] Draggable avec position sauvegardée automatiquement, clamping aux limites d'écran virtuel
+- [x] `DashboardViewModel` — show/hide, persistance, restore, hotkey toggle, commande ToggleCaptureAmeOverlay
+- [x] `MainWindow.xaml` — GroupBox "Panneau d'actions" dans onglet Divers avec CheckBox
+- [x] Tests unitaires (round-trip JSON, backward-compat, enum count, hotkey default Ctrl+F12)
+
 ## Itération 5 — Session manager (F5)
 - À planifier
 
