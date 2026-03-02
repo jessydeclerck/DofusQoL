@@ -88,6 +88,21 @@ public class FocusService : IFocusService
         }
     }
 
+    public FocusResult FocusWindow(nint windowHandle)
+    {
+        lock (_lock)
+        {
+            if (_slots.Count == 0)
+                return FocusResult.Error("Aucune fenêtre détectée.");
+
+            var index = _slots.FindIndex(w => w.Handle == windowHandle);
+            if (index < 0)
+                return FocusResult.Error($"Fenêtre (Handle={windowHandle}) introuvable dans les slots.");
+
+            return FocusWindowInternal(index);
+        }
+    }
+
     public FocusResult FocusNext()
     {
         lock (_lock)

@@ -319,4 +319,53 @@ public class FocusServiceTests
     {
         Assert.Null(_service.CurrentLeader);
     }
+
+    // --- FocusWindow (par handle) ---
+
+    [Fact]
+    public void FocusWindow_ValidHandle_FocusesCorrectWindow()
+    {
+        SetupSlots(CreateWindow(100, "Alice"), CreateWindow(200, "Charlie"));
+
+        var result = _service.FocusWindow(200);
+
+        Assert.True(result.Success);
+        Assert.Equal(1, _service.CurrentSlotIndex);
+        _mockHelper.Verify(h => h.FocusWindow(200), Times.Once);
+    }
+
+    [Fact]
+    public void FocusWindow_WithGapInSlots_FocusesCorrectWindow()
+    {
+        // Simule le cas réel : Characters a [Alice, Bob(déco), Charlie]
+        // mais FocusService._slots ne contient que [Alice, Charlie]
+        SetupSlots(CreateWindow(100, "Alice"), CreateWindow(300, "Charlie"));
+
+        // FocusWindow par handle fonctionne même si l'index dans Characters (2) != index dans _slots (1)
+        var result = _service.FocusWindow(300);
+
+        Assert.True(result.Success);
+        Assert.Equal(1, _service.CurrentSlotIndex);
+        _mockHelper.Verify(h => h.FocusWindow(300), Times.Once);
+    }
+
+    [Fact]
+    public void FocusWindow_HandleNotInSlots_ReturnsError()
+    {
+        SetupSlots(CreateWindow(100, "Alice"));
+
+        var result = _service.FocusWindow(999);
+
+        Assert.False(result.Success);
+        Assert.Contains("introuvable", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void FocusWindow_EmptySlots_ReturnsError()
+    {
+        var result = _service.FocusWindow(100);
+
+        Assert.False(result.Success);
+        Assert.Contains("Aucune fenêtre", result.ErrorMessage);
+    }
 }

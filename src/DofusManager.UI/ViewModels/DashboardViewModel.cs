@@ -762,7 +762,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
                 VirtualKeyCode = row.VirtualKeyCode,
                 DisplayName = row.HotkeyDisplay,
                 Action = HotkeyAction.FocusSlot,
-                SlotIndex = i
+                SlotIndex = i,
+                WindowHandle = row.Handle
             });
         }
 
@@ -1693,7 +1694,9 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
             var focusResult = e.Binding.Action switch
             {
-                HotkeyAction.FocusSlot => _focusService.FocusSlot(e.Binding.SlotIndex ?? 0),
+                HotkeyAction.FocusSlot => e.Binding.WindowHandle != 0
+                    ? _focusService.FocusWindow(e.Binding.WindowHandle)
+                    : _focusService.FocusSlot(e.Binding.SlotIndex ?? 0),
                 HotkeyAction.NextWindow => _focusService.FocusNext(),
                 HotkeyAction.PreviousWindow => _focusService.FocusPrevious(),
                 HotkeyAction.LastWindow => _focusService.FocusLast(),

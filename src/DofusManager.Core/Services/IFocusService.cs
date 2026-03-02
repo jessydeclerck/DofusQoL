@@ -10,6 +10,9 @@ public interface IFocusService
     /// <summary>Focus la fenêtre au slot donné.</summary>
     FocusResult FocusSlot(int slotIndex);
 
+    /// <summary>Focus la fenêtre identifiée par son handle Win32.</summary>
+    FocusResult FocusWindow(nint windowHandle);
+
     /// <summary>Focus la fenêtre suivante dans l'ordre.</summary>
     FocusResult FocusNext();
 

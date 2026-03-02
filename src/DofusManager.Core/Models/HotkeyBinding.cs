@@ -58,6 +58,12 @@ public class HotkeyBinding
     public int? SlotIndex { get; init; }
 
     /// <summary>
+    /// Handle Win32 de la fenêtre cible pour l'action FocusSlot.
+    /// Plus fiable que SlotIndex quand des personnages déconnectés décalent les indices.
+    /// </summary>
+    public nint WindowHandle { get; init; }
+
+    /// <summary>
     /// True si le raccourci utilise un bouton souris (XButton1/XButton2) au lieu d'une touche clavier.
     /// </summary>
     public bool IsMouseButton => VirtualKeyCode is 0x04 or 0x05 or 0x06;
