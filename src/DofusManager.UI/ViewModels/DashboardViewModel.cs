@@ -59,6 +59,12 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private DispatcherTimer? _pickModeTimer;
     private bool _pickMouseWasDown;
 
+    // Overlay visibility — masquer quand aucune fenêtre Dofus n'est au premier plan
+    private DispatcherTimer? _overlayVisibilityTimer;
+    private nint _mainWindowHandle;
+    private nint _actionOverlayHandle;
+    private nint _zaapPickerHandle;
+
     // --- Window title ---
 
     public string WindowTitle { get; } = $"DofusManager v{GetAppVersion()}";
@@ -377,6 +383,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     private double? _actionOverlayTop;
 
     private Views.ActionOverlayWindow? _actionOverlayWindow;
+    private Views.ZaapPickerOverlay? _zaapPickerOverlay;
 
     partial void OnShowActionOverlayChanged(bool value)
     {
@@ -417,18 +424,119 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
             }
 
             _actionOverlayWindow.Show();
+            _actionOverlayHandle = new System.Windows.Interop.WindowInteropHelper(_actionOverlayWindow).Handle;
         });
+        StartOverlayVisibilityMonitor();
         Logger.Information("Action overlay affiché");
     }
 
     private void HideActionOverlayWindow()
     {
+        StopOverlayVisibilityMonitor();
+        CloseZaapPicker();
         _dispatcher.Invoke(() =>
         {
             _actionOverlayWindow?.Close();
             _actionOverlayWindow = null;
         });
         Logger.Information("Action overlay masqué");
+    }
+
+    private void StartOverlayVisibilityMonitor()
+    {
+        if (_overlayVisibilityTimer is not null) return;
+        _overlayVisibilityTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        _overlayVisibilityTimer.Tick += OnOverlayVisibilityTick;
+        _overlayVisibilityTimer.Start();
+    }
+
+    private void StopOverlayVisibilityMonitor()
+    {
+        if (_overlayVisibilityTimer is not null)
+        {
+            _overlayVisibilityTimer.Tick -= OnOverlayVisibilityTick;
+            _overlayVisibilityTimer.Stop();
+            _overlayVisibilityTimer = null;
+        }
+    }
+
+    private void OnOverlayVisibilityTick(object? sender, EventArgs e)
+    {
+        if (_actionOverlayWindow is null) return;
+
+        var foreground = _windowHelper.GetForegroundWindow();
+        var isDofus = _detectionService.DetectedWindows.Any(w => w.Handle == foreground);
+
+        // Considérer aussi nos propres fenêtres (main window, picker, overlays)
+        var isOurWindow = !isDofus && foreground != nint.Zero &&
+            (foreground == _mainWindowHandle
+             || (_zaapPickerOverlay is not null && foreground == _zaapPickerHandle)
+             || foreground == _actionOverlayHandle);
+
+        var shouldShow = isDofus || isOurWindow;
+        var visibility = shouldShow ? Visibility.Visible : Visibility.Collapsed;
+
+        if (_actionOverlayWindow.Visibility != visibility)
+            _actionOverlayWindow.Visibility = visibility;
+
+        if (_captureAmeOverlay is not null && _captureAmeOverlay.Visibility != visibility)
+            _captureAmeOverlay.Visibility = visibility;
+
+        // Fermer le picker si on quitte le jeu
+        if (!shouldShow && _zaapPickerOverlay is not null)
+            CloseZaapPicker();
+    }
+
+    [RelayCommand]
+    private void OpenZaapPicker()
+    {
+        if (_zaapPickerOverlay is not null)
+        {
+            CloseZaapPicker();
+            return;
+        }
+
+        _dispatcher.Invoke(() =>
+        {
+            ZaapFilterText = string.Empty;
+
+            _zaapPickerOverlay = new Views.ZaapPickerOverlay();
+            _zaapPickerOverlay.DataContext = this;
+            _zaapPickerOverlay.Closed += (_, _) =>
+            {
+                _zaapPickerOverlay = null;
+                _zaapPickerHandle = nint.Zero;
+            };
+
+            // Positionner à gauche de l'ActionOverlay
+            if (_actionOverlayWindow is not null)
+            {
+                var overlayLeft = _actionOverlayWindow.Left;
+                var overlayTop = _actionOverlayWindow.Top;
+                var pickerWidth = _zaapPickerOverlay.Width;
+
+                var left = overlayLeft - pickerWidth - 4;
+                // Si pas assez de place à gauche, ouvrir à droite
+                if (left < SystemParameters.VirtualScreenLeft)
+                    left = overlayLeft + _actionOverlayWindow.ActualWidth + 4;
+
+                _zaapPickerOverlay.Left = left;
+                _zaapPickerOverlay.Top = overlayTop;
+            }
+
+            _zaapPickerOverlay.Show();
+            _zaapPickerHandle = new System.Windows.Interop.WindowInteropHelper(_zaapPickerOverlay).Handle;
+        });
+        Logger.Information("Zaap picker ouvert");
+    }
+
+    private void CloseZaapPicker()
+    {
+        _dispatcher.Invoke(() =>
+        {
+            _zaapPickerOverlay?.Close();
+            _zaapPickerOverlay = null;
+        });
     }
 
     [RelayCommand]
@@ -542,6 +650,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     /// </summary>
     public void InitializeHotkeys(nint windowHandle)
     {
+        _mainWindowHandle = windowHandle;
         _hotkeyService.Initialize(windowHandle);
         Logger.Information("DashboardViewModel initialisé avec HWND={Handle}", windowHandle);
 
@@ -1373,6 +1482,8 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task TravelToZaap(string? territoryName)
     {
+        CloseZaapPicker();
+
         if (string.IsNullOrWhiteSpace(territoryName))
         {
             StatusText = "Aucun territoire sélectionné";
@@ -2206,6 +2317,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
         _autoSaveCts?.Cancel();
         _autoSaveCts?.Dispose();
         HideCaptureAmeOverlay();
+        CloseZaapPicker();
         HideActionOverlayWindow();
         StopAltPollTimer();
         StopPickMode();

@@ -77,6 +77,13 @@
                     Style="{StaticResource OverlayButtonStyle}">
                 <mi:MaterialIcon Kind="Home" Width="22" Height="22" />
             </Button>
+
+            <!-- Zaap -->
+            <Button Command="{Binding OpenZaapPickerCommand}"
+                    ToolTip="Voyage Zaap"
+                    Style="{StaticResource OverlayButtonStyle}">
+                <mi:MaterialIcon Kind="MapMarker" Width="22" Height="22" />
+            </Button>
         </StackPanel>
     </Border>
 </Window>
