@@ -434,6 +434,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
     {
         StopOverlayVisibilityMonitor();
         CloseZaapPicker();
+        if (System.Windows.Application.Current is null) return; // contexte de test
         _dispatcher.Invoke(() =>
         {
             _actionOverlayWindow?.Close();
@@ -532,6 +533,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     private void CloseZaapPicker()
     {
+        if (System.Windows.Application.Current is null) return; // contexte de test
         _dispatcher.Invoke(() =>
         {
             _zaapPickerOverlay?.Close();
@@ -586,6 +588,7 @@ public partial class DashboardViewModel : ObservableObject, IDisposable
 
     private void HideCaptureAmeOverlay()
     {
+        if (System.Windows.Application.Current is null) return; // contexte de test
         _dispatcher.Invoke(() =>
         {
             _captureAmeOverlay?.Close();
