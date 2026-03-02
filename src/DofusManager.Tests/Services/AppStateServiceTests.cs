@@ -216,4 +216,74 @@ public class AppStateServiceTests : IDisposable
         Assert.NotNull(loaded);
         Assert.False(loaded.ShowCaptureAmeReminder);
     }
+
+    [Fact]
+    public async Task SaveAsync_EcritureAtomique_FichierOriginalSurvitSiTmpPresent()
+    {
+        // Sauvegarder un état initial
+        await _service.SaveAsync(new AppState { ActiveProfileName = "Initial" });
+
+        // Vérifier que le fichier .tmp n'existe PAS après un save réussi
+        Assert.False(File.Exists(_tempFile + ".tmp"));
+
+        // Vérifier que le fichier principal contient le bon état
+        var loaded = await _service.LoadAsync();
+        Assert.NotNull(loaded);
+        Assert.Equal("Initial", loaded.ActiveProfileName);
+    }
+
+    [Fact]
+    public async Task SaveAsync_FichierTmpResiduel_EstEcraseParProchainSave()
+    {
+        // Simuler un .tmp résiduel d'un crash précédent
+        await File.WriteAllTextAsync(_tempFile + ".tmp", "garbage");
+
+        await _service.SaveAsync(new AppState { ActiveProfileName = "Fresh" });
+
+        // Le .tmp résiduel a été écrasé puis renommé
+        Assert.False(File.Exists(_tempFile + ".tmp"));
+        var loaded = await _service.LoadAsync();
+        Assert.NotNull(loaded);
+        Assert.Equal("Fresh", loaded.ActiveProfileName);
+    }
+
+    [Fact]
+    public async Task LoadAsync_FichierVide_RetourneNull()
+    {
+        // Simuler un fichier tronqué (crash pendant écriture sans atomic write)
+        await File.WriteAllTextAsync(_tempFile, "");
+
+        var result = await _service.LoadAsync();
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task LoadAsync_FichierLocke_RetourneNull()
+    {
+        // Écrire un état valide d'abord
+        await _service.SaveAsync(new AppState { ActiveProfileName = "Test" });
+
+        // Locker le fichier en écriture exclusive
+        using var lockStream = new FileStream(_tempFile, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+
+        // LoadAsync doit retourner null (IOException) sans crash
+        var result = await _service.LoadAsync();
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task SaveAsync_Concurrent_PasDeCorruption()
+    {
+        // Lancer 10 saves concurrents
+        var tasks = Enumerable.Range(0, 10)
+            .Select(i => _service.SaveAsync(new AppState { ActiveProfileName = $"Save{i}" }))
+            .ToArray();
+
+        await Task.WhenAll(tasks);
+
+        // Le fichier doit contenir un état valide (l'un des 10)
+        var loaded = await _service.LoadAsync();
+        Assert.NotNull(loaded);
+        Assert.StartsWith("Save", loaded.ActiveProfileName);
+    }
 }

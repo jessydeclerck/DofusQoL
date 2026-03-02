@@ -19,6 +19,7 @@ public class AppStateService : IAppStateService
     };
 
     private readonly string _filePath;
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
 
     public AppStateService()
     {
@@ -40,8 +41,23 @@ public class AppStateService : IAppStateService
         if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
             Directory.CreateDirectory(dir);
 
-        await using var stream = File.Create(_filePath);
-        await JsonSerializer.SerializeAsync(stream, state, JsonOptions);
+        await _writeLock.WaitAsync();
+        try
+        {
+            // Écriture atomique : write-to-temp-then-rename pour éviter la corruption
+            var tmpPath = _filePath + ".tmp";
+            await using (var stream = File.Create(tmpPath))
+            {
+                await JsonSerializer.SerializeAsync(stream, state, JsonOptions);
+                await stream.FlushAsync();
+            }
+
+            File.Move(tmpPath, _filePath, overwrite: true);
+        }
+        finally
+        {
+            _writeLock.Release();
+        }
 
         Logger.Information("État applicatif sauvegardé (profil actif : {ProfileName})",
             state.ActiveProfileName ?? "(aucun)");
@@ -63,9 +79,9 @@ public class AppStateService : IAppStateService
                 state?.ActiveProfileName ?? "(aucun)");
             return state;
         }
-        catch (JsonException ex)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
-            Logger.Warning(ex, "Fichier d'état corrompu, ignoré : {FilePath}", _filePath);
+            Logger.Warning(ex, "Fichier d'état illisible, ignoré : {FilePath}", _filePath);
             return null;
         }
     }
